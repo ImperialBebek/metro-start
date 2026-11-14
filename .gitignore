@@ -1,0 +1,17 @@
+# OS and editor files
+.DS_Store
+Thumbs.db
+*.swp
+.vscode/
+.idea/
+
+# Packaged builds
+*.zip
+*.crx
+*.pem
+
+# Test runs
+tests/.profile/
+tests/output/
+__pycache__/
+.venv/
