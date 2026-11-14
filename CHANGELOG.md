@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.11.1
+- Store-ready icon (96×96 artwork with transparent padding) and updated description.
+
 ## 1.11.0
 - Windows 8 parallax: the wallpaper slides more slowly than the tiles as you scroll. Can be turned off in Personalize.
 

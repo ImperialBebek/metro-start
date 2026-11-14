@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Metro Start",
-  "version": "1.11.0",
-  "description": "A Windows 8–style tile Start screen for your new tab: folders, bookmark import, widgets, wallpapers and offline games.",
+  "version": "1.11.1",
+  "description": "A tile Start screen inspired by Windows 8 for your new tab: folders, bookmark import, widgets, wallpapers and games.",
   "chrome_url_overrides": {
     "newtab": "newtab.html"
   },
