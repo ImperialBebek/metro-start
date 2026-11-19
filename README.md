@@ -1,19 +1,20 @@
 # Metro Start
 
-A Windows 8–style tile Start screen for Chrome's new tab page, with folders, bookmark import, live widgets, a wallpaper gallery and offline games.
+A tile Start screen inspired by Windows 8 for Chrome's new tab page, with folders, bookmark import, live widgets, a wallpaper gallery and offline games.
 
 ![Metro Start](docs/screenshots/start.png)
 
 ## Features
 
-- **Tiles in the Windows 8 style.** Four sizes (small, medium, wide, large), the Metro color palette or any color, and the site's own icon, a letter or your own picture.
+- **Tiles in the Windows 8 style.** Four sizes (small, medium, wide, large), the Metro color palette or any color. Each site tile shows its icon at the top left with the site's name in bold and its address underneath.
+- **Your order, kept.** Tiles flow left to right and top to bottom in groups, like Windows 8, and always appear in the order you arranged them.
 - **Folders, nested as deep as you like.** Folder tiles preview what's inside. Open a folder to see its path, jump back along it, or press Esc to go up one level.
 - **Drag and drop.** Reorder tiles, drop a tile onto the middle of a folder to file it, or drag it out of an open folder to move it up a level.
-- **Bookmark import.** Pick whole bookmark folders or single sites. Your folder structure is kept, duplicates are skipped, and each tile gets a sharp icon from the site itself or the one Chrome saved. You can also replace everything on Start with your bookmarks. Undo reverses any import.
+- **Bookmark import.** Pick whole bookmark folders or single sites. Tiles keep your bookmarks' order and folder structure, duplicates are skipped, bookmarks with long names get double-width tiles, and each tile gets a sharp icon from the site itself or the one Chrome saved. You can also replace everything on Start with your bookmarks while keeping your games. Undo reverses any import.
 - **Clock, weather, news and markets** in the bottom bar. Weather comes from Open-Meteo for your location or a city you choose; headlines from Google News or any RSS feed; prices from Yahoo Finance.
 - **Wallpaper gallery.** Landscapes, Seascapes, Cities, Night sky and Paintings, from Wikimedia Commons' community-chosen Featured Pictures. Your pick is saved locally, credited to its photographer, and works offline. You can also upload your own picture or pick a solid color.
 - **Windows 8 parallax.** The wallpaper slides more slowly than the tiles as you scroll.
-- **Eight offline games.** Solitaire, Minesweeper, Sudoku (with a daily puzzle), 2048, Five Letters (a daily word game), Snake, Blocks and Bricks. Progress and best scores are saved as you play.
+- **Ten offline games.** Solitaire, Minesweeper, Sudoku (with a daily puzzle), Cat Nap (a cat logic puzzle with a daily puzzle), 2048, Five Letters (a daily word game), Pairs (animal memory match), Snake, Blocks and Bricks. Progress and best scores are saved as you play. Lost your Games folder? **+ → Add a game… → All games** brings it back.
 - **Type to search.** Start typing anywhere to filter your tiles. Enter opens the first match; Shift+Enter searches the web.
 - **Personalize** fonts, tile size, animations, flip-on-open, clock format, units and more. Export and import a backup of everything.
 
@@ -21,9 +22,13 @@ A Windows 8–style tile Start screen for Chrome's new tab page, with folders, b
 | --- | --- |
 | ![Games folder](docs/screenshots/folder.png) | ![Personalize panel](docs/screenshots/personalize.png) |
 
-| Solitaire | Five Letters | Minesweeper |
+| Cat Nap | Pairs | Solitaire |
 | --- | --- | --- |
-| ![Solitaire](docs/screenshots/solitaire.png) | ![Five Letters](docs/screenshots/five-letters.png) | ![Minesweeper](docs/screenshots/minesweeper.png) |
+| ![Cat Nap](docs/screenshots/catnap.png) | ![Pairs](docs/screenshots/pairs.png) | ![Solitaire](docs/screenshots/solitaire.png) |
+
+| Five Letters | Minesweeper |
+| --- | --- |
+| ![Five Letters](docs/screenshots/five-letters.png) | ![Minesweeper](docs/screenshots/minesweeper.png) |
 
 > The screenshots were taken without internet access, so tiles show letters. Once installed, they show each site's icon.
 
@@ -69,7 +74,7 @@ See [PRIVACY.md](PRIVACY.md) for what is sent where.
 | `weather.js` | Weather and city search (Open-Meteo) |
 | `widgets.js` | News and Markets widgets |
 | `wallpapers.js` | Wallpaper gallery (Wikimedia Commons) |
-| `games/` | The eight games; `core.js` holds shared helpers |
+| `games/` | The ten games; `core.js` holds shared helpers |
 | `tests/` | Automated browser tests (Playwright) |
 | `docs/screenshots/` | Images used in this README |
 

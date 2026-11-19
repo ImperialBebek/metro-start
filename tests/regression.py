@@ -40,6 +40,16 @@ async def route(r):
     if u.startswith('http'): return await r.abort()
     return await r.continue_()
 SHAPE="(()=>{const f=l=>l.map(t=>t.type==='folder'?t.title+'['+f(t.children).join(',')+']':(t.game||t.title));return f(JSON.parse(localStorage.getItem('metro:tiles'))).join(' | ')})()"
+TREE2={"id":"0","children":[{"id":"1","title":"Bookmarks bar","children":[
+  {"id":"10","title":"Zebra Bank","url":"https://zebra.example/"},
+  {"id":"11","title":"Apple","url":"https://apple.example/"},
+  {"id":"12","title":"Work","children":[{"id":"13","title":"Jira","url":"https://jira.example/"}]},
+  {"id":"14","title":"Inbox (3) - alireza.farmad@example.com - Gmail","url":"https://mail.example/"},
+  {"id":"15","title":"Moon","url":"https://moon.example/"},
+  {"id":"16","title":"Banana","url":"https://banana.example/"}]}]}
+INIT2="""window.chrome={runtime:{id:'t',getURL:p=>'chrome-extension://t'+p,getManifest:()=>({version:'test'})},
+ permissions:{request:async()=>true,remove:async()=>true,contains:async()=>true},
+ bookmarks:{getTree:async()=>["""+json.dumps(TREE2)+"""]}};"""
 results=[]
 def check(name, ok, extra=''): results.append((name, ok)); print(('PASS' if ok else 'FAIL'), name, extra)
 async def fresh(b):
@@ -53,7 +63,7 @@ async def main():
         b=await p.chromium.launch(**LAUNCH)
         pg,errs=await fresh(b)
         # basics
-        check("default tiles + Games folder", "Games[solitaire,minesweeper,sudoku,2048,words,snake,blocks,bricks]" in await pg.evaluate(SHAPE))
+        check("default tiles + Games folder", "Games[solitaire,minesweeper,sudoku,catnap,2048,words,pairs,snake,blocks,bricks]" in await pg.evaluate(SHAPE))
         check("weather shows", "66°" in await pg.inner_text("#weather-widget"))
         check("news widget", "Headline one" in await pg.inner_text("#news-widget"))
         check("markets widget", "+1.01%" in await pg.inner_text("#stocks-widget"))
@@ -169,6 +179,89 @@ async def main():
         await pg.click("#wp-close"); await pg.wait_for_timeout(300)
         check("gallery credit shown", "A. Photographer" in await pg.inner_text("#bg-credit"))
         check("no page errors (gallery)", not errs, str(errs))
+        # ---- 1.12: order-keeping import, long names, keep games, restore, Cat Nap, Pairs
+        pg=await b.new_page(viewport={"width":1440,"height":860}); errs=[]
+        pg.on("pageerror", lambda e: errs.append(str(e)))
+        await pg.add_init_script(INIT2)
+        await pg.route("**/*", lambda r: r.abort() if r.request.url.startswith('http') else r.continue_())
+        await pg.goto(URL); await pg.wait_for_timeout(900)
+        check("Games folder has 10 games incl. Cat Nap and Pairs", await pg.evaluate("JSON.parse(localStorage.getItem('metro:tiles')).find(t=>t.title==='Games').children.map(c=>c.game).join()") == "solitaire,minesweeper,sudoku,catnap,2048,words,pairs,snake,blocks,bricks")
+        # ---- erase + import, keep games, order, widen
+        await pg.click("#btn-add"); await pg.click("#ctx .ctx-item >> text=Import bookmarks…"); await pg.wait_for_timeout(400)
+        await pg.click("label:has(#bm-replace)")
+        check("button says games are kept", "except games" in await pg.text_content("#bm-import"), await pg.text_content("#bm-import"))
+        await pg.click("#bm-import"); await pg.wait_for_function("document.querySelector('#bm-overlay').hidden", timeout=20000)
+        shape=await pg.evaluate("JSON.parse(localStorage.getItem('metro:tiles')).map(t=>t.title+(t.size==='wide'?'(wide)':''))")
+        check("games kept, bookmarks in order", shape == ['Games','Zebra Bank','Apple','Work','Inbox (3) - alireza.farmad@example.com - Gmail(wide)','Moon','Banana'], shape)
+        # visual order: element positions follow list order (reading order within groups)
+        pos=await pg.evaluate("""[...document.querySelectorAll('#grid .tile')].map(e=>{const r=e.getBoundingClientRect();return [e.title.split('\\n')[0].replace(/ \\(\\d+\\)$/,''), Math.round(r.left), Math.round(r.top)]})""")
+        check("on-screen order matches list", [x[0] for x in pos] == ['Games','Zebra Bank','Apple','Work','Inbox (3) - alireza.farmad@example.com - Gmail','Moon','Banana'])
+        # ---- erase without keeping games, then restore
+        await pg.click("#btn-add"); await pg.click("#ctx .ctx-item >> text=Import bookmarks…"); await pg.wait_for_timeout(400)
+        await pg.click("label:has(#bm-replace)"); await pg.click("label:has(#bm-keep-games)")
+        await pg.click("#bm-import"); await pg.wait_for_function("document.querySelector('#bm-overlay').hidden", timeout=20000)
+        check("erase without keeping removes games", await pg.evaluate("everyTile().filter(x=>x.tile.type==='game').length") == 0)
+        await pg.click("#btn-settings"); await pg.wait_for_timeout(300); await pg.click("#set-restore-games"); await pg.wait_for_timeout(300)
+        check("Restore brings Games folder back", await pg.evaluate("everyTile().filter(x=>x.tile.type==='game').length") == 10, await pg.text_content("#toast"))
+        await pg.evaluate("(()=>{const f=tiles.find(t=>t.title==='Games'); f.children.splice(2,3); commit();})()")
+        await pg.click("#btn-add"); await pg.click("#ctx .ctx-item >> text=Add a game…"); await pg.click("#ctx .ctx-item >> text=All games (Games folder)"); await pg.wait_for_timeout(200)
+        check("All games refills missing ones", await pg.evaluate("tiles.find(t=>t.title==='Games').children.length") == 10, await pg.text_content("#toast"))
+        # ---- Cat Nap
+        await pg.evaluate("openGame('catnap')"); await pg.wait_for_timeout(500)
+        st=await pg.evaluate("gameData.saves.catnap"); n=st['n']
+        wrong=[i for i in range(n*n) if st['cats'][i//n] != i%n][0]
+        await pg.click(f".cn-cell[data-i='{wrong}']", button="right"); await pg.wait_for_timeout(200)
+        check("wrong cat costs a heart and is crossed out", await pg.evaluate("gameData.saves.catnap.hearts")==2 and await pg.evaluate(f"gameData.saves.catnap.marks[{wrong}]")==1)
+        # drag-cross a row
+        rr = 1 if wrong // n == 0 else 0
+        a=await pg.locator(f".cn-cell >> nth={rr*n}").bounding_box(); z=await pg.locator(f".cn-cell >> nth={rr*n+n-1}").bounding_box()
+        await pg.mouse.move(a['x']+5,a['y']+5); await pg.mouse.down(); await pg.mouse.move(z['x']+5,z['y']+5, steps=10); await pg.mouse.up(); await pg.wait_for_timeout(150)
+        row0=await pg.evaluate(f"gameData.saves.catnap.marks.slice({rr*n},{rr*n+n})")
+        check("drag crosses out a row", all(m==1 for m in row0), row0)
+        # clicking a crossed square turns it into a cat: correct square of row 0
+        c0=rr*n+st['cats'][rr]
+        await pg.click(f".cn-cell[data-i='{c0}']"); await pg.wait_for_timeout(100)
+        check("click on crossed square places cat", await pg.evaluate(f"gameData.saves.catnap.marks[{c0}]")==2)
+        check("auto-cross marks blocked squares faintly", await pg.evaluate("document.querySelectorAll('.cn-cell.faint').length") > 0)
+        for r in [x for x in range(n) if x != rr][:-1]:
+            await pg.click(f".cn-cell[data-i='{r*n+st['cats'][r]}']", button="right"); await pg.wait_for_timeout(40)
+        await pg.click("#game-tools button:has-text('Hint')"); await pg.wait_for_timeout(1300)
+        check("Cat Nap win", "napping" in await pg.inner_text("#game-banner"), (await pg.inner_text("#game-status")).replace("\n"," "))
+        await pg.click("#game-banner .btn:not(.primary)"); await pg.wait_for_timeout(200)
+        await pg.click("#game-back")
+        # out of hearts
+        await pg.evaluate("openGame('catnap')"); await pg.wait_for_timeout(300)
+        await pg.click("#game-tools button:has-text('New puzzle')"); await pg.wait_for_timeout(300)
+        st=await pg.evaluate("gameData.saves.catnap"); n=st['n']
+        wrongs=[i for i in range(n*n) if st['cats'][i//n] != i%n][:3]
+        for w in wrongs: await pg.click(f".cn-cell[data-i='{w}']", button="right"); await pg.wait_for_timeout(80)
+        check("three wrong cats → out of hearts", "Out of hearts" in await pg.inner_text("#game-banner"))
+        await pg.click("#game-banner .btn.primary"); await pg.wait_for_timeout(200)
+        check("Try again resets same puzzle", await pg.evaluate("gameData.saves.catnap.hearts")==3 and await pg.evaluate("JSON.stringify(gameData.saves.catnap.cats)")==json.dumps(st['cats']).replace(' ',''))
+        for lv,size in [('medium',8),('hard',10),('daily',8)]:
+            await pg.click(f"#game-tools button[data-value={lv}]"); await pg.wait_for_timeout(200)
+            if await pg.is_visible("#game-banner"): await pg.click("#game-banner .btn.primary"); await pg.wait_for_timeout(200)
+            check(f"Cat Nap {lv} is {size}x{size}", await pg.evaluate("document.querySelectorAll('.cn-cell').length")==size*size)
+        await pg.click("#game-back")
+        # ---- Pairs
+        await pg.evaluate("openGame('pairs')"); await pg.wait_for_timeout(500)
+        deck=await pg.evaluate("gameData.saves.pairs.deck")
+        await pg.click(".pr-card >> nth=0"); await pg.click(".pr-card >> nth=1"); await pg.wait_for_timeout(200)
+        mism = deck[0]!=deck[1]
+        await pg.wait_for_timeout(1000)
+        if mism: check("mismatched cards turn back over", await pg.evaluate("document.querySelectorAll('.pr-card.up').length")==0)
+        seen=set()
+        for i,k in enumerate(deck):
+            if k in seen: continue
+            j=[x for x in range(len(deck)) if deck[x]==k and x!=i][0]; seen.add(k)
+            await pg.click(f".pr-card >> nth={i}"); await pg.click(f".pr-card >> nth={j}"); await pg.wait_for_timeout(60)
+        await pg.wait_for_timeout(900)
+        check("Pairs win", "All pairs found" in await pg.inner_text("#game-banner"), (await pg.inner_text("#game-status")).replace("\n"," "))
+        await pg.click("#game-tools button[data-value=hard]"); await pg.wait_for_timeout(300)
+        check("Pairs hard has 24 cards", await pg.evaluate("document.querySelectorAll('.pr-card').length")==24)
+        await pg.evaluate("document.querySelectorAll('.pr-card').forEach(e=>e.classList.add('up'))"); await pg.wait_for_timeout(500)
+        check("no page errors (1.12 features)", not errs, str(errs))
+
         await b.close()
     print(f"\n{sum(ok for _,ok in results)}/{len(results)} passed")
 asyncio.run(main())

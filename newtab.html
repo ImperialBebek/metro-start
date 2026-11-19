@@ -150,7 +150,9 @@
           <label class="check"><input type="checkbox" class="toggle" id="bm-folders" checked> Turn bookmark folders into tile folders</label>
           <label class="check"><input type="checkbox" class="toggle" id="bm-dupes" checked> Skip sites already on Start</label>
           <label class="check"><input type="checkbox" class="toggle" id="bm-icons" checked> Get sharp icons from the websites</label>
+          <label class="check"><input type="checkbox" class="toggle" id="bm-widen" checked> Make tiles with long names double width</label>
           <label class="check"><input type="checkbox" class="toggle" id="bm-replace"> Erase everything on Start first, then import</label>
+          <label class="check sub-option"><input type="checkbox" class="toggle" id="bm-keep-games" checked> Keep my games when erasing</label>
         </div>
         <div class="actions">
           <button type="button" class="btn" id="bm-cancel">Cancel</button>
@@ -196,6 +198,7 @@
       </div>
       <div class="row"><span>Animations</span><input type="checkbox" class="toggle" id="set-anim"></div>
       <div class="row"><span>Flip tiles when opening</span><input type="checkbox" class="toggle" id="set-flip"></div>
+      <div class="row start"><button class="btn" id="set-restore-games" type="button">Restore the Games folder</button></div>
       <div class="row"><span>Background moves as you scroll</span><input type="checkbox" class="toggle" id="set-parallax"></div>
       <div class="row"><span>Font</span>
         <div class="seg" id="set-font"><button type="button" data-value="rounded">Rounded</button><button type="button" data-value="metro">Metro</button></div>
@@ -291,6 +294,9 @@
   <script src="games/snake.js"></script>
   <script src="games/blocks.js"></script>
   <script src="games/bricks.js"></script>
+  <script src="games/catnap-engine.js"></script>
+  <script src="games/catnap.js"></script>
+  <script src="games/pairs.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

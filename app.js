@@ -27,6 +27,7 @@ const DEFAULT_SETTINGS = {
   flipDefaultOff: false,
   gamesAdded: false,
   gamesAdded2: false,
+  gamesAdded3: false,
   widgetPos: 'left',
   clock24: false,
   showWeather: true,
@@ -168,9 +169,39 @@ function defaultTiles() {
     gamesFolder(),
   ];
 }
-const GAME_ORDER = ['solitaire', 'minesweeper', 'sudoku', '2048', 'words', 'snake', 'blocks', 'bricks'];
+const GAME_ORDER = ['solitaire', 'minesweeper', 'sudoku', 'catnap', '2048', 'words', 'pairs', 'snake', 'blocks', 'bricks'];
 const NEW_IN_1_9 = ['words', 'snake', 'blocks', 'bricks'];
+const NEW_IN_1_12 = ['catnap', 'pairs'];
 const gameTile = (game, size = 'medium') => ({ id: uid(), type: 'game', game, title: Games.LIST[game].title, color: Games.LIST[game].color, size });
+// Just the games from a list of tiles, with any folders that hold games (other tiles in them are dropped)
+function gamesOnly(list) {
+  const out = [];
+  for (const t of list) {
+    if (t.type === 'game') out.push(t);
+    else if (t.type === 'folder') {
+      const kids = gamesOnly(t.children);
+      if (kids.length) out.push({ ...t, children: kids });
+    }
+  }
+  return out;
+}
+// Brings the Games folder back, or fills in any games missing from it
+function restoreGames() {
+  const have = new Set(everyTile().filter(x => x.tile.type === 'game').map(x => x.tile.game));
+  const missing = GAME_ORDER.filter(g => !have.has(g));
+  const folder = everyTile().map(x => x.tile).find(t => t.type === 'folder' && t.children.some(c => c.type === 'game'));
+  if (!folder) {
+    tiles.push(gamesFolder());
+    commit();
+    toast('Added the Games folder');
+  } else if (missing.length) {
+    missing.forEach(g => folder.children.push(gameTile(g)));
+    commit();
+    toast(`Added ${missing.length} game${missing.length === 1 ? '' : 's'} to “${folder.title}”`);
+  } else {
+    toast(`All the games are already in “${folder.title}”`);
+  }
+}
 function gamesFolder() {
   return { id: uid(), type: 'folder', title: 'Games', color: '#00a300', size: 'medium', children: GAME_ORDER.map(g => gameTile(g)) };
 }
@@ -363,6 +394,15 @@ function gameFace(t) {
   if (t.game === '2048') return h('div', { class: 'tile-face' }, h('span', { class: 'tile-2048' }, '2048'));
   return h('div', { class: 'tile-face' }, h('span', { class: 'game-glyph', html: Games.GLYPHS[t.game] || '' }));
 }
+// The address shown under a site's name: no "https://", no "www.", no trailing slash
+function displayUrl(url) {
+  try {
+    const u = new URL(url);
+    if (!/^https?:$/.test(u.protocol)) return url;
+    const path = (u.pathname + u.search).replace(/\/+$/, '');
+    return u.hostname.replace(/^www\./, '') + (path === '/' ? '' : path);
+  } catch { return url; }
+}
 function tileEl(t, { draggable = true, preview = false } = {}) {
   const isFolder = t.type === 'folder';
   const isGame = t.type === 'game';
@@ -381,6 +421,15 @@ function tileEl(t, { draggable = true, preview = false } = {}) {
   });
   if (isFolder) el.append(folderPreview(t), h('span', { class: 'tile-count' }, String(t.children.length), h('span', { class: 'chev', 'aria-hidden': 'true' }, '›')));
   else if (isGame) el.append(gameFace(t));
+  else if (!fill && t.size !== 'small') {
+    el.classList.add('site');
+    el.append(h('div', { class: 'site-head' },
+      h('div', { class: 'site-icon' }, tileIcon(t)),
+      h('div', { class: 'site-text' },
+        h('span', { class: 'site-name' }, t.title),
+        h('span', { class: 'site-url' }, displayUrl(t.url)))));
+    return el;
+  }
   else el.append(h('div', { class: 'tile-face' }, tileIcon(t)));
   if (t.size !== 'small') {
     el.append(isFolder
@@ -390,6 +439,63 @@ function tileEl(t, { draggable = true, preview = false } = {}) {
   return el;
 }
 
+// ---- layout: tiles keep their order. They flow left to right, top to bottom inside groups that are
+// GROUP_COLS units wide (like Windows 8), and groups continue to the right. A tile only moves forward to find
+// room, never back into an earlier gap, so what comes first in the list always comes first on screen.
+const GROUP_COLS = 4;
+function packTiles(list, groupCols, rows) {
+  const used = new Set();
+  const free = (c, r, w, hh) => {
+    for (let x = c; x < c + w; x++) for (let y = r; y < r + hh; y++) if (used.has(`${x},${y}`)) return false;
+    return true;
+  };
+  const perGroup = groupCols * rows;
+  let cursor = 0;
+  return list.map(t => {
+    let [w, hh] = SIZES[t.size] || SIZES.medium;
+    w = Math.min(w, groupCols);
+    hh = Math.min(hh, rows);
+    for (let i = cursor; ; i++) {
+      const g = Math.floor(i / perGroup);
+      const r = Math.floor((i % perGroup) / groupCols);
+      const c = i % groupCols;
+      if (c + w > groupCols || r + hh > rows) continue;
+      const x = g * groupCols + c;
+      // keep the tile inside its group (rows is finite for Start, effectively unlimited in a folder)
+      if (!free(x, g * rows + r, w, hh)) continue;
+      for (let dx = 0; dx < w; dx++) for (let dy = 0; dy < hh; dy++) used.add(`${x + dx},${g * rows + r + dy}`);
+      cursor = i + 1;
+      return { group: g, col: c, row: r, w, h: hh };
+    }
+  });
+}
+// Start screen: groups side by side, with a little extra space between them
+function placeOnStart(els, list, rows) {
+  const spots = packTiles(list, GROUP_COLS, rows);
+  const groups = spots.reduce((n, p) => Math.max(n, p.group + 1), 1);
+  const cols = [];
+  for (let g = 0; g < groups; g++) cols.push(`repeat(${GROUP_COLS}, var(--unit))`, g < groups - 1 ? 'calc(var(--unit) * .3)' : '');
+  grid.style.gridTemplateColumns = cols.filter(Boolean).join(' ');
+  els.forEach((el, i) => {
+    const p = spots[i];
+    el.style.gridColumn = `${p.group * (GROUP_COLS + 1) + p.col + 1} / span ${p.w}`;
+    el.style.gridRow = `${p.row + 1} / span ${p.h}`;
+  });
+}
+// A folder: one group as wide as the folder band, as many rows as needed
+function placeInFolder(els, list) {
+  const unit = UNIT_PX[settings.tileScale] || 70;
+  const gap = Math.round(unit / 7);
+  const cols = Math.max(GROUP_COLS, Math.floor((folderGrid.clientWidth - 8 + gap) / (unit + gap)));
+  const spots = packTiles(list, cols, 100000);
+  folderGrid.style.gridTemplateColumns = `repeat(${cols}, var(--unit))`;
+  els.forEach((el, i) => {
+    el.style.gridColumn = `${spots[i].col + 1} / span ${spots[i].w}`;
+    el.style.gridRow = `${spots[i].row + 1} / span ${spots[i].h}`;
+  });
+}
+let startRows = 6;
+
 function searchResults(q) {
   return everyTile().map(x => x.tile).filter(t => `${t.title} ${t.url || ''}`.toLowerCase().includes(q));
 }
@@ -398,7 +504,9 @@ function renderGrid({ animate = false } = {}) {
   requestAnimationFrame(() => updateParallax());
   const q = searchQuery.trim().toLowerCase();
   const list = q ? searchResults(q) : tiles;
-  grid.replaceChildren(...list.map(t => tileEl(t, { draggable: !q })));
+  const els = list.map(t => tileEl(t, { draggable: !q }));
+  placeOnStart(els, list, startRows);
+  grid.replaceChildren(...els);
   const hint = $('#empty-hint');
   hint.hidden = list.length > 0;
   hint.textContent = q
@@ -427,6 +535,7 @@ function layoutGrid() {
   let rows = Math.floor((avail + gap) / (unit + gap));
   rows = Math.min(MAX_ROWS, Math.max(4, rows - (rows % 2)));
   grid.style.gridTemplateRows = `repeat(${rows}, var(--unit))`;
+  if (rows !== startRows) { startRows = rows; renderGrid(); }
 }
 
 
@@ -604,7 +713,7 @@ function addMenu(x, y, parentId = null) {
 }
 
 function gameMenu(x, y, parentId) {
-  showMenu(x, y, [{ header: 'Add a game' }, ...Object.entries(Games.LIST).map(([id, g]) => ({
+  showMenu(x, y, [{ label: 'All games (Games folder)', action: restoreGames }, '-', { header: 'Add one game' }, ...Object.entries(Games.LIST).map(([id, g]) => ({
     label: g.title,
     action: () => {
       const t = gameTile(id);
@@ -667,7 +776,9 @@ function renderFolder({ animate = false } = {}) {
   $('#folder-out-tip').textContent = `Drag a tile outside this band to move it ${parent ? `to “${parent.title}”` : 'back to Start'}.`;
   if (document.activeElement !== folderTitle) folderTitle.value = f.title;
   $('#folder-band').style.setProperty('--folder-color', f.color);
-  folderGrid.replaceChildren(...f.children.map(t => tileEl(t)));
+  const els = f.children.map(t => tileEl(t));
+  folderGrid.replaceChildren(...els);
+  placeInFolder(els, f.children);
   $('#folder-empty').hidden = f.children.length > 0;
   if (animate && settings.animations) entrance(folderGrid);
 }
@@ -1149,13 +1260,14 @@ set.reset.addEventListener('click', async () => {
 });
 $('#set-close').addEventListener('click', closeSettings);
 $('#set-bookmarks').addEventListener('click', openBookmarkImport);
+$('#set-restore-games').addEventListener('click', () => { closeSettings(); restoreGames(); });
 settingsScrim.addEventListener('click', closeSettings);
 
 
 // ---------------------------------------------------------------- bookmark import
 const bm = {
   overlay: $('#bm-overlay'), tree: $('#bm-tree'), size: $('#bm-size'), keepFolders: $('#bm-folders'),
-  skipDupes: $('#bm-dupes'), icons: $('#bm-icons'), replace: $('#bm-replace'), go: $('#bm-import'), cancel: $('#bm-cancel'), all: $('#bm-all'), none: $('#bm-none'),
+  skipDupes: $('#bm-dupes'), icons: $('#bm-icons'), replace: $('#bm-replace'), keepGames: $('#bm-keep-games'), widen: $('#bm-widen'), go: $('#bm-import'), cancel: $('#bm-cancel'), all: $('#bm-all'), none: $('#bm-none'),
 };
 let bmState = null; // { roots, selected: Set<id>, open: Set<id>, size }
 
@@ -1203,6 +1315,7 @@ async function openBookmarkImport() {
   }
   setSeg(bm.size, bmState.size);
   bm.replace.checked = false; // never carried over from a previous import
+  bm.keepGames.checked = true;
   renderBmTree();
   openOverlay(bm.overlay);
   setTimeout(() => bm.go.focus(), 60);
@@ -1220,7 +1333,9 @@ function renderBmTree() {
   const n = bmState.selected.size;
   bm.go.disabled = n === 0;
   const replace = bm.replace.checked;
-  bm.go.textContent = n === 0 ? 'Add tiles' : replace ? `Erase Start and add ${n} tile${n === 1 ? '' : 's'}` : `Add ${n} tile${n === 1 ? '' : 's'}`;
+  const keep = bm.keepGames.checked;
+  bm.go.textContent = n === 0 ? 'Add tiles' : replace ? `Erase Start${keep ? ' (except games)' : ''} and add ${n} tile${n === 1 ? '' : 's'}` : `Add ${n} tile${n === 1 ? '' : 's'}`;
+  bm.keepGames.disabled = !replace;
   bm.go.classList.toggle('danger-fill', replace);
   bm.skipDupes.disabled = replace;
 }
@@ -1354,7 +1469,7 @@ function setImportBusy(busy, text = '') {
   bm.go.disabled = busy || !bmState.selected.size;
   if (busy) bm.go.textContent = text;
   bm.cancel.textContent = busy ? 'Skip icons' : 'Cancel';
-  [bm.all, bm.none, bm.keepFolders, bm.skipDupes, bm.icons, bm.replace].forEach(x => { x.disabled = busy; });
+  [bm.all, bm.none, bm.keepFolders, bm.skipDupes, bm.icons, bm.replace, bm.keepGames, bm.widen].forEach(x => { x.disabled = busy; });
   bm.tree.style.pointerEvents = busy ? 'none' : '';
   bm.tree.style.opacity = busy ? '.6' : '';
 }
@@ -1407,6 +1522,17 @@ function allLinkKeys() {
   return allLinksDeep().map(t => urlKey(t.url));
 }
 
+// Does a name need more than the two lines a medium tile has room for?
+let measureCtx = null;
+function nameTooLong(title) {
+  const unit = UNIT_PX[settings.tileScale] || 70;
+  const gap = Math.round(unit / 7);
+  const textWidth = (unit * 2 + gap) - 20 - Math.round(unit * 0.5) - 8; // tile minus padding, icon and spacing
+  measureCtx = measureCtx || document.createElement('canvas').getContext('2d');
+  measureCtx.font = `700 14px ${getComputedStyle(document.documentElement).getPropertyValue('--font') || 'sans-serif'}`;
+  // words wrap, so two lines hold a bit less than twice the width
+  return measureCtx.measureText(title).width > textWidth * 1.75;
+}
 function importSelectedBookmarks(icons = new Map()) {
   if (!bmState || !bmState.selected.size) return;
   const keepFolders = bm.keepFolders.checked;
@@ -1415,7 +1541,8 @@ function importSelectedBookmarks(icons = new Map()) {
   const size = bmState.size;
   const snapshot = JSON.stringify(tiles);
   if (replace) {
-    tiles = [];
+    // keep games (and the folders that hold them) unless asked to erase them too
+    tiles = bm.keepGames.checked ? gamesOnly(tiles) : [];
     if (openFolderId) closeFolder();
   }
   const existing = new Set(allLinkKeys());
@@ -1450,6 +1577,7 @@ function importSelectedBookmarks(icons = new Map()) {
       existing.add(key);
       const t = link(((n.title || '').trim() || prettyName(n.url)).slice(0, 80), n.url, colorFor(hostOf(n.url) || n.url), size);
       if (icons.has(n.id)) t.icon.siteIcon = icons.get(n.id);
+      if (bm.widen.checked && size === 'medium' && nameTooLong(t.title)) t.size = 'wide';
       listFor().push(t);
       added++;
     }
@@ -1471,6 +1599,7 @@ function importSelectedBookmarks(icons = new Map()) {
 
 onSeg(bm.size, v => { if (bmState) bmState.size = v; });
 bm.replace.addEventListener('change', () => { if (bmState) renderBmTree(); });
+bm.keepGames.addEventListener('change', () => { if (bmState) renderBmTree(); });
 bm.all.addEventListener('click', () => { bmState.roots.flatMap(bmLeaves).forEach(l => bmState.selected.add(l.id)); renderBmTree(); });
 bm.none.addEventListener('click', () => { bmState.selected.clear(); renderBmTree(); });
 bm.cancel.addEventListener('click', () => { if (bmState && bmState.busy) bmState.skipIcons = true; else closeBookmarkImport(); });
@@ -1830,6 +1959,7 @@ bindTileEvents(folderGrid, () => openFolderId);
 scroller.addEventListener('contextmenu', e => { if (!e.target.closest('.tile')) tileMenu(e, null); });
 
 new ResizeObserver(debounce(() => { layoutGrid(); updateParallax(); }, 60)).observe(scroller);
+window.addEventListener('resize', debounce(() => { if (openFolderId) renderFolder(); }, 120));
 
 // ---- Windows 8 parallax: as the tiles scroll sideways, the wallpaper follows at a fraction of the speed
 let parallaxQueued = false;
@@ -1904,6 +2034,7 @@ function toast(msg, action) {
     if (!everyTile().some(x => x.tile.type === 'game')) tiles.push(gamesFolder());
     settings.gamesAdded = true;
     settings.gamesAdded2 = true;
+    settings.gamesAdded3 = true;
     saveTiles();
     saveSettings();
   }
@@ -1913,6 +2044,15 @@ function toast(msg, action) {
     const folder = everyTile().map(x => x.tile).find(t => t.type === 'folder' && t.children.some(c => c.type === 'game'));
     if (folder) NEW_IN_1_9.filter(g => !have.has(g)).forEach(g => folder.children.push(gameTile(g)));
     settings.gamesAdded2 = true;
+    saveTiles();
+    saveSettings();
+  }
+  // 1.12: the same for Cat Nap and Pairs
+  if (!settings.gamesAdded3) {
+    const have = new Set(everyTile().filter(x => x.tile.type === 'game').map(x => x.tile.game));
+    const folder = everyTile().map(x => x.tile).find(t => t.type === 'folder' && t.children.some(c => c.type === 'game'));
+    if (folder) NEW_IN_1_12.filter(g => !have.has(g)).forEach(g => folder.children.push(gameTile(g)));
+    settings.gamesAdded3 = true;
     saveTiles();
     saveSettings();
   }

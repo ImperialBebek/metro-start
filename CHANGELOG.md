@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.0
+- New tile design: the site's icon at the top left, its name in bold beside it, and its address underneath.
+- Tiles always appear in your order: they flow left to right and top to bottom in groups, like Windows 8, instead of jumping ahead to fill gaps.
+- Bookmark import keeps your bookmarks' order, and bookmarks with long names get double-width tiles (can be turned off).
+- Erase-and-import keeps your games by default. New "All games" option (and a button in Personalize) brings the Games folder back or fills in missing games.
+- New games: Cat Nap, a cat logic puzzle with a daily puzzle, and Pairs, an animal memory match.
+
 ## 1.11.1
 - Store-ready icon (96×96 artwork with transparent padding) and updated description.
 
