@@ -7,14 +7,14 @@ A tile Start screen inspired by Windows 8 for Chrome's new tab page, with folder
 ## Features
 
 - **Tiles in the Windows 8 style.** Four sizes (small, medium, wide, large), the Metro color palette or any color. Each site tile shows its icon at the top left with the site's name in bold and its address underneath.
-- **Your order, kept.** Tiles flow left to right and top to bottom in groups, like Windows 8, and always appear in the order you arranged them.
+- **Tiles stay where you put them.** Drag a tile to any square and it stays there; an outline shows where it will land, and tiles in the way move aside. New tiles and imported bookmarks are added after your existing tiles, in order, in groups four tiles wide like Windows 8.
 - **Folders, nested as deep as you like.** Folder tiles preview what's inside. Open a folder to see its path, jump back along it, or press Esc to go up one level.
-- **Drag and drop.** Reorder tiles, drop a tile onto the middle of a folder to file it, or drag it out of an open folder to move it up a level.
+- **Drag and drop.** Move tiles anywhere, drop a tile onto the middle of a folder to file it, or drag it out of an open folder to move it up a level.
 - **Bookmark import.** Pick whole bookmark folders or single sites. Tiles keep your bookmarks' order and folder structure, duplicates are skipped, bookmarks with long names get double-width tiles, and each tile gets a sharp icon from the site itself or the one Chrome saved. You can also replace everything on Start with your bookmarks while keeping your games. Undo reverses any import.
 - **Clock, weather, news and markets** in the bottom bar. Weather comes from Open-Meteo for your location or a city you choose; headlines from Google News or any RSS feed; prices from Yahoo Finance.
 - **Wallpaper gallery.** Landscapes, Seascapes, Cities, Night sky and Paintings, from Wikimedia Commons' community-chosen Featured Pictures. Your pick is saved locally, credited to its photographer, and works offline. You can also upload your own picture or pick a solid color.
 - **Windows 8 parallax.** The wallpaper slides more slowly than the tiles as you scroll.
-- **Ten offline games.** Solitaire, Minesweeper, Sudoku (with a daily puzzle), Cat Nap (a cat logic puzzle with a daily puzzle), 2048, Five Letters (a daily word game), Pairs (animal memory match), Snake, Blocks and Bricks. Progress and best scores are saved as you play. Lost your Games folder? **+ → Add a game… → All games** brings it back.
+- **Ten offline games.** Solitaire, Minesweeper, Sudoku (with a daily puzzle), Cat Nap (a cat logic puzzle with a daily puzzle), 2048, Five Letters (a daily word game), Pairs (animal memory match), Snake, Blocks and Bricks. Progress and best scores are saved as you play. Lost your Games folder? **+ → Add a game → All games** brings it back.
 - **Type to search.** Start typing anywhere to filter your tiles. Enter opens the first match; Shift+Enter searches the web.
 - **Personalize** fonts, tile size, animations, flip-on-open, clock format, units and more. Export and import a backup of everything.
 

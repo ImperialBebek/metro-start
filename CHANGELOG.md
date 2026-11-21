@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.13.0
+- The right-click menu is now short, with submenus. "Move to folder" opens a list of your folders, and folders that have subfolders open their own submenu, so Delete is always on screen. Submenus open on hover or click, and work with the arrow keys (→ opens, ← goes back, Esc closes).
+- "Add a game" in the + menu is a submenu too.
+- New default tiles (for new installs, or Personalize → Reset): Google sites are grouped in a Google folder, and streaming and music services (Netflix, YouTube, Hulu, Max, Disney+, Prime Video, Apple TV+, Spotify, Twitch) are in an Entertainment folder.
+
+## 1.12.3
+- Fixed: tiles inside folders were stacked in one narrow column. Folders now use the full width of the window.
+- Fixed: tiles inside folders snapped back after being moved or resized. Like the Start screen, a folder now keeps each tile on the square you put it on, shows an outline while dragging, and moves tiles that are in the way to the nearest free space.
+
+## 1.12.2
+- Fixed: a tile dropped in the empty space beside or below your tiles snapped back. The whole Start area now accepts drops, and dragging near the left or right edge scrolls.
+- Fewer entries on the extension's Errors page: weather problems are logged as information, and bookmark-import icon lookups no longer follow redirects to other sites (which Chrome reported as errors).
+
+## 1.12.1
+- Fixed: tiles snapped back after being moved or resized. Tiles now keep the exact square you put them on. While dragging, an outline shows where the tile will land, and any tile in the way moves to the nearest free space. Resizing keeps the tile's corner in place.
+- Fixed: making several changes quickly could briefly bring back an older layout.
+
 ## 1.12.0
 - New tile design: the site's icon at the top left, its name in bold beside it, and its address underneath.
 - Tiles always appear in your order: they flow left to right and top to bottom in groups, like Windows 8, instead of jumping ahead to fill gaps.

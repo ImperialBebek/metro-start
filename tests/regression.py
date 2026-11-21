@@ -70,7 +70,7 @@ async def main():
         check("flip off by default", await pg.evaluate("settings.flipOpen") is False)
         # drag a tile into Social
         before=await pg.evaluate("JSON.parse(localStorage.getItem('metro:tiles')).find(t=>t.title==='Social').children.length")
-        await pg.drag_and_drop("[title^='YouTube']","[title^='Social']"); await pg.wait_for_timeout(300)
+        await pg.drag_and_drop("[title^='Amazon']","[title^='Social']"); await pg.wait_for_timeout(300)
         check("drag into folder", await pg.evaluate("JSON.parse(localStorage.getItem('metro:tiles')).find(t=>t.title==='Social').children.length")==before+1)
         # nested folder + Esc goes up
         await pg.click("[title^='Social']"); await pg.wait_for_timeout(300)
@@ -204,7 +204,7 @@ async def main():
         await pg.click("#btn-settings"); await pg.wait_for_timeout(300); await pg.click("#set-restore-games"); await pg.wait_for_timeout(300)
         check("Restore brings Games folder back", await pg.evaluate("everyTile().filter(x=>x.tile.type==='game').length") == 10, await pg.text_content("#toast"))
         await pg.evaluate("(()=>{const f=tiles.find(t=>t.title==='Games'); f.children.splice(2,3); commit();})()")
-        await pg.click("#btn-add"); await pg.click("#ctx .ctx-item >> text=Add a game…"); await pg.click("#ctx .ctx-item >> text=All games (Games folder)"); await pg.wait_for_timeout(200)
+        await pg.click("#btn-add"); await pg.click("#ctx .ctx-item >> text=Add a game"); await pg.click("#ctx .ctx-item >> text=All games (Games folder)"); await pg.wait_for_timeout(200)
         check("All games refills missing ones", await pg.evaluate("tiles.find(t=>t.title==='Games').children.length") == 10, await pg.text_content("#toast"))
         # ---- Cat Nap
         await pg.evaluate("openGame('catnap')"); await pg.wait_for_timeout(500)
@@ -261,6 +261,48 @@ async def main():
         check("Pairs hard has 24 cards", await pg.evaluate("document.querySelectorAll('.pr-card').length")==24)
         await pg.evaluate("document.querySelectorAll('.pr-card').forEach(e=>e.classList.add('up'))"); await pg.wait_for_timeout(500)
         check("no page errors (1.12 features)", not errs, str(errs))
+
+        # ---- 1.13: default folders and the hierarchical tile menu (short viewport, deep folders)
+        pg,errs=await fresh(b)
+        shape=await pg.evaluate(SHAPE)
+        check("defaults: Google folder", shape.startswith("Google[Google,Gmail,Maps,Drive,Calendar,Photos,News]"), shape)
+        check("defaults: Entertainment folder", "Entertainment[Netflix,YouTube,Hulu,Max,Disney+,Prime Video,Apple TV+,Spotify,Twitch]" in shape, shape)
+        # lots of folders, some nested, so the old flat "Move to folder" list would run off the screen
+        await pg.evaluate("""(()=>{const kids=[];for(let i=1;i<=14;i++)kids.push({id:'nf'+i,type:'folder',title:'Sub '+i,color:'#2b5797',size:'small',children:[]});
+          kids[0].children.push({id:'deep',type:'folder',title:'Deep',color:'#2b5797',size:'small',children:[]});
+          tiles.push({id:'many',type:'folder',title:'Many',color:'#2b5797',size:'medium',children:kids});
+          for(let i=1;i<=10;i++)tiles.push({id:'top'+i,type:'folder',title:'Top '+i,color:'#00a300',size:'small',children:[]}); commit();})()""")
+        await pg.set_viewport_size({"width":1280,"height":560}); await pg.wait_for_timeout(300)
+        await pg.click("#grid [title^='Wikipedia']", button="right"); await pg.wait_for_timeout(150)
+        dele=await pg.evaluate("(()=>{const d=[...document.querySelectorAll('#ctx .ctx-panel[data-level=\"0\"] .ctx-item')].find(e=>e.textContent==='Delete');const r=d&&d.getBoundingClientRect();return r?[r.top,r.bottom,innerHeight]:null})()")
+        check("menu: Delete is on screen", bool(dele) and dele[0]>=0 and dele[1]<=dele[2], dele)
+        check("menu: top level is short", await pg.evaluate("document.querySelectorAll('#ctx .ctx-panel[data-level=\"0\"] > *').length") <= 8)
+        await pg.hover("#ctx .ctx-item >> text=Move to folder"); await pg.wait_for_timeout(400)
+        check("menu: hovering opens the Move submenu", await pg.evaluate("!!document.querySelector('#ctx .ctx-panel[data-level=\"1\"]')"))
+        sub=await pg.evaluate("(()=>{const p=document.querySelector('#ctx .ctx-panel[data-level=\"1\"]').getBoundingClientRect();return [p.top,p.bottom,p.left,p.right,innerWidth,innerHeight]})()")
+        check("menu: submenu fits in the window", sub[0]>=0 and sub[1]<=sub[5] and sub[2]>=0 and sub[3]<=sub[4], sub)
+        await pg.click("#ctx .ctx-panel[data-level='1'] .ctx-item.has-sub >> text=Many"); await pg.wait_for_timeout(200)
+        lvl2=await pg.evaluate("[...document.querySelectorAll('#ctx .ctx-panel[data-level=\"2\"] .ctx-item')].map(e=>e.textContent)")
+        check("menu: nested folders open as a deeper submenu", lvl2[:1]==["Into “Many”"] and any("Sub 1" in x for x in lvl2), lvl2)
+        await pg.click("#ctx .ctx-panel[data-level='2'] .ctx-item.has-sub >> text=Sub 1"); await pg.wait_for_timeout(200)
+        await pg.click("#ctx .ctx-panel[data-level='3'] .ctx-item >> text=Deep"); await pg.wait_for_timeout(300)
+        moved=await pg.evaluate("findTile(tiles.find(t=>t.title==='Wikipedia')?.id||'x')")
+        where=await pg.evaluate("(()=>{const x=everyTile().find(e=>e.tile.title==='Wikipedia');return x?x.path.map(p=>p.title).join('/'):null})()")
+        check("menu: picking a deep folder moves the tile there", where=="Many/Sub 1/Deep" and await pg.evaluate("document.querySelector('#ctx').hidden"), where)
+        # keyboard: → opens a submenu, ← closes it, Esc closes the menu
+        await pg.click("#grid [title^='Amazon']", button="right"); await pg.wait_for_timeout(100)
+        await pg.focus("#ctx .ctx-panel[data-level='0'] .has-sub"); await pg.keyboard.press("ArrowRight"); await pg.wait_for_timeout(100)
+        k1=await pg.evaluate("document.activeElement.closest('.ctx-panel')?.dataset.level")
+        await pg.keyboard.press("ArrowLeft"); await pg.wait_for_timeout(100)
+        k2=await pg.evaluate("[document.activeElement.textContent, document.querySelectorAll('#ctx .ctx-panel').length]")
+        await pg.keyboard.press("Escape"); await pg.wait_for_timeout(100)
+        check("menu: keyboard → / ← / Esc", k1=="1" and k2[0].startswith("Move to folder") and k2[1]==1 and await pg.evaluate("document.querySelector('#ctx').hidden"), (k1,k2))
+        # a folder can't be moved into itself or its own subfolders
+        await pg.click("#grid [title^='Many']", button="right"); await pg.hover("#ctx .ctx-item >> text=Move to folder"); await pg.wait_for_timeout(400)
+        l1=await pg.evaluate("[...document.querySelectorAll('#ctx .ctx-panel[data-level=\"1\"] .ctx-item')].map(e=>e.textContent)")
+        check("menu: a folder isn't offered as its own target", not any(x.startswith("Many") for x in l1), l1)
+        await pg.keyboard.press("Escape")
+        check("no page errors (1.13 menu)", not errs, str(errs))
 
         await b.close()
     print(f"\n{sum(ok for _,ok in results)}/{len(results)} passed")

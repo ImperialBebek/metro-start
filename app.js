@@ -147,13 +147,17 @@ function link(title, url, color, size = 'medium') {
 }
 function defaultTiles() {
   return [
-    link('Google', 'https://www.google.com', '#2d89ef', 'wide'),
-    link('YouTube', 'https://www.youtube.com', '#ee1111'),
-    link('Gmail', 'https://mail.google.com', '#b91d47'),
-    link('Maps', 'https://maps.google.com', '#1e7145', 'small'),
-    link('Drive', 'https://drive.google.com', '#e3a21a', 'small'),
-    link('Calendar', 'https://calendar.google.com', '#2b5797', 'small'),
-    link('Photos', 'https://photos.google.com', '#da532c', 'small'),
+    {
+      id: uid(), type: 'folder', title: 'Google', color: '#2d89ef', size: 'wide', children: [
+        link('Google', 'https://www.google.com', '#2d89ef', 'wide'),
+        link('Gmail', 'https://mail.google.com', '#b91d47'),
+        link('Maps', 'https://maps.google.com', '#1e7145', 'small'),
+        link('Drive', 'https://drive.google.com', '#e3a21a', 'small'),
+        link('Calendar', 'https://calendar.google.com', '#2b5797', 'small'),
+        link('Photos', 'https://photos.google.com', '#da532c', 'small'),
+        link('News', 'https://news.google.com', '#00aba9'),
+      ],
+    },
     {
       id: uid(), type: 'folder', title: 'Social', color: '#603cba', size: 'medium', children: [
         link('Reddit', 'https://www.reddit.com', '#da532c'),
@@ -164,8 +168,19 @@ function defaultTiles() {
     },
     link('Wikipedia', 'https://www.wikipedia.org', '#1d1d1d'),
     link('Amazon', 'https://www.amazon.com', '#e3a21a', 'wide'),
-    link('Netflix', 'https://www.netflix.com', '#b91d47'),
-    link('News', 'https://news.google.com', '#00aba9'),
+    {
+      id: uid(), type: 'folder', title: 'Entertainment', color: '#b91d47', size: 'wide', children: [
+        link('Netflix', 'https://www.netflix.com', '#b91d47', 'wide'),
+        link('YouTube', 'https://www.youtube.com', '#ee1111'),
+        link('Hulu', 'https://www.hulu.com', '#00a300'),
+        link('Max', 'https://www.max.com', '#603cba'),
+        link('Disney+', 'https://www.disneyplus.com', '#2b5797'),
+        link('Prime Video', 'https://www.primevideo.com', '#00aba9'),
+        link('Apple TV+', 'https://tv.apple.com', '#1d1d1d'),
+        link('Spotify', 'https://open.spotify.com', '#1e7145'),
+        link('Twitch', 'https://www.twitch.tv', '#9f00a7'),
+      ],
+    },
     gamesFolder(),
   ];
 }
@@ -206,11 +221,13 @@ function gamesFolder() {
   return { id: uid(), type: 'folder', title: 'Games', color: '#00a300', size: 'medium', children: GAME_ORDER.map(g => gameTile(g)) };
 }
 
+const validPos = p => !!p && [p.g, p.c, p.r].every(n => Number.isInteger(n) && n >= 0) && p.c < 64 && p.g < 500 && p.r < 1000;
 const MAX_DEPTH = 12; // nesting limit, only to protect against broken backups
 function sanitizeTile(t, depth = 0) {
   if (!t || typeof t !== 'object') return null;
   const base = {
     id: typeof t.id === 'string' && t.id ? t.id : uid(),
+    ...(validPos(t.pos) ? { pos: { g: t.pos.g, c: t.pos.c, r: t.pos.r } } : {}),
     title: String(t.title || '').slice(0, 80),
     color: /^#[0-9a-f]{3,8}$/i.test(t.color) ? t.color : PALETTE[0],
     size: SIZES[t.size] ? t.size : 'medium',
@@ -254,9 +271,13 @@ async function load() {
   settings = mergeSettings(await Store.get('settings', null));
 }
 
+const recentSaves = [];
 async function saveTiles() {
+  recentSaves.push(JSON.stringify(tiles));
+  if (recentSaves.length > 20) recentSaves.shift();
   try { await Store.set('tiles', tiles); } catch (e) { toast('Couldn’t save your tiles: ' + e.message); }
 }
+const saveTilesSoon = debounce(saveTiles, 300);
 async function saveSettings() {
   try { await Store.set('settings', settings); } catch (e) { toast('Couldn’t save settings: ' + e.message); }
 }
@@ -316,10 +337,67 @@ function moveTile(id, toFolderId, refId = null, after = false) {
     return;
   }
   src.list.splice(src.list.indexOf(src.tile), 1);
+  if (src.list !== dest) delete src.tile.pos;
   let idx = refId ? dest.findIndex(x => x.id === refId) : -1;
   if (idx < 0) idx = dest.length;
   else if (after) idx++;
   dest.splice(idx, 0, src.tile);
+  commit();
+}
+
+function placeTileAt(id, spot) {
+  if (tiles.some(x => x.id === id)) { placeIn(tiles, id, spot, GROUP_COLS, startRows, lastSpots); return; }
+  const f = findFolder(openFolderId);
+  if (f && f.children.some(x => x.id === id)) placeIn(f.children, id, { ...spot, g: 0 }, folderCols, FOLDER_ROWS, folderSpots);
+}
+function placeIn(list, id, spot, groupCols, rows, spotsNow) {
+  const GROUP_COLS_ = groupCols;
+  const t = list.find(x => x.id === id);
+  if (!t) return;
+  const [w, hh] = tileDims(t, rows, GROUP_COLS_);
+  const target = { g: spot.g, c: Math.max(0, Math.min(spot.c, GROUP_COLS_ - w)), r: Math.max(0, Math.min(spot.r, rows - hh)) };
+  // freeze everything where it's shown now, so nothing else shifts
+  for (const x of list) {
+    const sp = spotsNow.get(x.id);
+    if (sp && x.id !== id) x.pos = { g: sp.group, c: sp.col, r: sp.row };
+  }
+  t.pos = target;
+  const used = new Set();
+  const cells = (g, c, r, ww, h2) => { const out = []; for (let a = c; a < c + ww; a++) for (let b = r; b < r + h2; b++) out.push(`${g},${a},${b}`); return out; };
+  cells(target.g, target.c, target.r, w, hh).forEach(k => used.add(k));
+  const moving = [];
+  for (const x of list) {
+    if (x === t || !x.pos) continue;
+    const [xw, xh] = tileDims(x, rows, GROUP_COLS_);
+    const mine = cells(x.pos.g, x.pos.c, x.pos.r, xw, xh);
+    if (mine.some(k => used.has(k))) moving.push(x);
+    else mine.forEach(k => used.add(k));
+  }
+  // each tile that was in the way goes to the closest free spot (same group first)
+  const lastRow = Math.max(0, ...list.map(y => (y.pos ? y.pos.r + 4 : 0)));
+  const searchRows = Math.min(rows, lastRow + 4);
+  for (const x of moving) {
+    const [xw, xh] = tileDims(x, rows, GROUP_COLS_);
+    const from = x.pos.g * GROUP_COLS_ + x.pos.c;
+    let best = null;
+    const maxG = rows < FOLDER_ROWS ? Math.max(...list.map(y => (y.pos ? y.pos.g : 0))) + 1 : 0;
+    for (let g = 0; g <= maxG; g++) {
+      for (let r = 0; r + xh <= searchRows + xh; r++) {
+        if (r + xh > rows) break;
+        for (let c = 0; c + xw <= GROUP_COLS_; c++) {
+          const ks = cells(g, c, r, xw, xh);
+          if (ks.some(k => used.has(k))) continue;
+          const d = Math.abs(g * GROUP_COLS_ + c - from) + Math.abs(r - x.pos.r) + (g !== x.pos.g ? 2 : 0);
+          if (!best || d < best.d) best = { d, g, c, r };
+        }
+      }
+    }
+    x.pos = { g: best.g, c: best.c, r: best.r };
+    cells(best.g, best.c, best.r, xw, xh).forEach(k => used.add(k));
+  }
+  // keep the list in the order you see it (search and new tiles follow this order)
+  const at = x => (x.pos ? (x.pos.g * 1000 + x.pos.r) * 100 + x.pos.c : Infinity);
+  list.sort((a, b) => at(a) - at(b));
   commit();
 }
 
@@ -469,7 +547,61 @@ function packTiles(list, groupCols, rows) {
     }
   });
 }
-// Start screen: groups side by side, with a little extra space between them
+// Start screen with saved positions. Tiles keep the square you put them on. Tiles without a position yet
+// (new, imported, or from before 1.12.1) are placed in order after the last group in use, and that spot is saved.
+// A tile that doesn't fit right now (for example, the window got shorter) is shown further along but keeps its saved spot.
+const tileDims = (t, rows, cols = GROUP_COLS) => { const [w, hh] = SIZES[t.size] || SIZES.medium; return [Math.min(w, cols), Math.min(hh, rows)]; };
+function layoutStart(list, rows) { return layoutFree(list, GROUP_COLS, rows, true); }
+// In a folder there's a single group; new tiles go after the last tile rather than into earlier gaps.
+function layoutFree(list, groupCols, rows, groups) {
+  const GROUP_COLS_ = groupCols;
+  const used = new Set();
+  const free = (g, c, r, w, hh) => {
+    if (c < 0 || r < 0 || c + w > GROUP_COLS_ || r + hh > rows) return false;
+    for (let x = c; x < c + w; x++) for (let y = r; y < r + hh; y++) if (used.has(`${g},${x},${y}`)) return false;
+    return true;
+  };
+  const take = (g, c, r, w, hh) => { for (let x = c; x < c + w; x++) for (let y = r; y < r + hh; y++) used.add(`${g},${x},${y}`); };
+  const spots = new Array(list.length);
+  list.forEach((t, i) => {
+    const [w, hh] = tileDims(t, rows, GROUP_COLS_);
+    const p = t.pos;
+    if (p && (groups || p.g === 0) && free(p.g, p.c, p.r, w, hh)) { take(p.g, p.c, p.r, w, hh); spots[i] = { group: p.g, col: p.c, row: p.r, w, h: hh }; }
+  });
+  const perGroup = GROUP_COLS_ * rows;
+  let cursor;
+  if (groups) cursor = spots.reduce((m, sp) => (sp ? Math.max(m, sp.group) : m), 0) * perGroup;
+  else cursor = spots.reduce((m, sp) => (sp ? Math.max(m, sp.row * GROUP_COLS_ + sp.col + 1) : m), 0);
+  let changed = false;
+  list.forEach((t, i) => {
+    if (spots[i]) return;
+    const [w, hh] = tileDims(t, rows, GROUP_COLS_);
+    for (let k = cursor; ; k++) {
+      const g = Math.floor(k / perGroup);
+      const r = Math.floor((k % perGroup) / GROUP_COLS_);
+      const c = k % GROUP_COLS_;
+      if (!free(g, c, r, w, hh)) continue;
+      take(g, c, r, w, hh);
+      spots[i] = { group: g, col: c, row: r, w, h: hh };
+      cursor = k + 1;
+      if (!t.pos) { t.pos = { g, c, r }; changed = true; }
+      break;
+    }
+  });
+  return { spots, changed };
+}
+function applySpots(els, spots) {
+  const groups = spots.reduce((n, p) => Math.max(n, p.group + 1), 1);
+  const cols = [];
+  for (let g = 0; g < groups; g++) cols.push(`repeat(${GROUP_COLS}, var(--unit))`, g < groups - 1 ? 'calc(var(--unit) * .3)' : '');
+  grid.style.gridTemplateColumns = cols.filter(Boolean).join(' ');
+  els.forEach((el, i) => {
+    const p = spots[i];
+    el.style.gridColumn = `${p.group * (GROUP_COLS + 1) + p.col + 1} / span ${p.w}`;
+    el.style.gridRow = `${p.row + 1} / span ${p.h}`;
+  });
+}
+// Search results: just the matches, packed in order
 function placeOnStart(els, list, rows) {
   const spots = packTiles(list, GROUP_COLS, rows);
   const groups = spots.reduce((n, p) => Math.max(n, p.group + 1), 1);
@@ -483,18 +615,26 @@ function placeOnStart(els, list, rows) {
   });
 }
 // A folder: one group as wide as the folder band, as many rows as needed
+const FOLDER_ROWS = 999;
+let folderCols = GROUP_COLS;
+let folderSpots = new Map(); // where each tile in the open folder is shown right now
 function placeInFolder(els, list) {
   const unit = UNIT_PX[settings.tileScale] || 70;
   const gap = Math.round(unit / 7);
-  const cols = Math.max(GROUP_COLS, Math.floor((folderGrid.clientWidth - 8 + gap) / (unit + gap)));
-  const spots = packTiles(list, cols, 100000);
-  folderGrid.style.gridTemplateColumns = `repeat(${cols}, var(--unit))`;
+  // the band's inner width (the folder grid itself may not be laid out yet)
+  const inner = folderGrid.parentElement.clientWidth || Math.min(1100, window.innerWidth - 80);
+  folderCols = Math.max(GROUP_COLS, Math.floor((inner - 8 + gap) / (unit + gap)));
+  const { spots, changed } = layoutFree(list, folderCols, FOLDER_ROWS, false);
+  folderGrid.style.gridTemplateColumns = `repeat(${folderCols}, var(--unit))`;
   els.forEach((el, i) => {
     el.style.gridColumn = `${spots[i].col + 1} / span ${spots[i].w}`;
     el.style.gridRow = `${spots[i].row + 1} / span ${spots[i].h}`;
   });
+  folderSpots = new Map(list.map((t, i) => [t.id, spots[i]]));
+  if (changed) saveTilesSoon();
 }
 let startRows = 6;
+let lastSpots = new Map(); // where each Start tile is shown right now
 
 function searchResults(q) {
   return everyTile().map(x => x.tile).filter(t => `${t.title} ${t.url || ''}`.toLowerCase().includes(q));
@@ -505,7 +645,13 @@ function renderGrid({ animate = false } = {}) {
   const q = searchQuery.trim().toLowerCase();
   const list = q ? searchResults(q) : tiles;
   const els = list.map(t => tileEl(t, { draggable: !q }));
-  placeOnStart(els, list, startRows);
+  if (q) placeOnStart(els, list, startRows);
+  else {
+    const { spots, changed } = layoutStart(list, startRows);
+    applySpots(els, spots);
+    lastSpots = new Map(list.map((t, i) => [t.id, spots[i]]));
+    if (changed) saveTilesSoon();
+  }
   grid.replaceChildren(...els);
   const hint = $('#empty-hint');
   hint.hidden = list.length > 0;
@@ -619,27 +765,32 @@ function bindTileEvents(container, getFolderId) {
   container.addEventListener('dragstart', e => {
     const el = e.target.closest && e.target.closest('.tile');
     if (!el || searchQuery) { e.preventDefault(); return; }
-    drag = { id: el.dataset.id };
+    // remember which square of the tile was grabbed, so it lands where it's dropped
+    const r = el.getBoundingClientRect();
+    const step = cellStep();
+    drag = { id: el.dataset.id, grabC: Math.floor((e.clientX - r.left) / step), grabR: Math.floor((e.clientY - r.top) / step) };
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', el.dataset.id);
     requestAnimationFrame(() => el.classList.add('dragging'));
     hideMenu();
   });
   container.addEventListener('dragover', e => {
-    if (!drag) return;
+    if (!drag || (container === grid && startDragOK()) || (container === folderGrid && folderDragOK())) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
     clearDropMarks();
     const el = e.target.closest('.tile');
+    if (container === grid && startDragOK()) return; // handled by the whole Start area below
     if (!el || el.dataset.id === drag.id) return;
     el.classList.add('drop-' + dropMode(el, e));
   });
   container.addEventListener('drop', e => {
-    if (!drag) return;
+    if (!drag || (container === grid && startDragOK()) || (container === folderGrid && folderDragOK())) return;
     e.preventDefault();
     e.stopPropagation();
     const id = drag.id;
     const el = e.target.closest('.tile');
+    if (container === grid && startDragOK()) return; // handled by the whole Start area below
     clearDropMarks();
     if (!el) { moveTile(id, getFolderId()); return; }
     if (el.dataset.id === id) return;
@@ -667,13 +818,166 @@ function dropMode(el, e) {
   if (canNest && rx > 0.22 && rx < 0.78) return 'into';
   return rx < 0.5 ? 'before' : 'after';
 }
+// ---- Folder drag and drop by position: the whole folder band takes the drop
+const folderDragOK = () => {
+  const f = drag && openFolderId && findFolder(openFolderId);
+  return !!f && f.children.some(t => t.id === drag.id);
+};
+function folderSpotUnder(e) {
+  const step = cellStep();
+  const box = folderGrid.getBoundingClientRect();
+  const pad = parseFloat(getComputedStyle(folderGrid).paddingLeft) || 0;
+  const x = e.clientX - box.left - pad + folderGrid.scrollLeft;
+  const y = e.clientY - box.top - pad + folderGrid.scrollTop;
+  const t = findFolder(openFolderId).children.find(x2 => x2.id === drag.id);
+  const [w] = tileDims(t, FOLDER_ROWS, folderCols);
+  return {
+    g: 0,
+    c: Math.max(0, Math.min(folderCols - w, Math.floor(x / step) - drag.grabC)),
+    r: Math.max(0, Math.floor(y / step) - drag.grabR),
+  };
+}
+function showFolderGhost(sp) {
+  let ghost = folderGrid.querySelector('.drop-ghost');
+  if (!ghost) { ghost = h('div', { class: 'drop-ghost' }); folderGrid.append(ghost); }
+  const t = findFolder(openFolderId).children.find(x => x.id === drag.id);
+  const [w, hh] = tileDims(t, FOLDER_ROWS, folderCols);
+  ghost.style.gridColumn = `${sp.c + 1} / span ${w}`;
+  ghost.style.gridRow = `${sp.r + 1} / span ${hh}`;
+}
+const folderBand = $('#folder-band');
+folderBand.addEventListener('dragover', e => {
+  if (!folderDragOK()) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  clearDropMarks();
+  const el = e.target.closest && e.target.closest('#folder-grid .tile');
+  if (el && el.dataset.id !== drag.id && dropMode(el, e) === 'into') { el.classList.add('drop-into'); return; }
+  showFolderGhost(folderSpotUnder(e));
+});
+folderBand.addEventListener('drop', e => {
+  if (!folderDragOK()) return;
+  e.preventDefault();
+  e.stopPropagation();
+  const id = drag.id;
+  const el = e.target.closest && e.target.closest('#folder-grid .tile');
+  const into = el && el.dataset.id !== id && dropMode(el, e) === 'into';
+  const spot = into ? null : folderSpotUnder(e);
+  clearDropMarks();
+  if (into) moveTile(id, el.dataset.id);
+  else placeTileAt(id, spot);
+});
+
+// ---- Start drag and drop by position. The whole Start area takes the drop, including the empty space
+// to the right of the last group and below the tiles, and it scrolls sideways near the edges.
+scroller.addEventListener('dragover', e => {
+  if (!startDragOK()) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  clearDropMarks();
+  const edge = 70;
+  const box = scroller.getBoundingClientRect();
+  if (e.clientX > box.right - edge) scroller.scrollLeft += 18;
+  else if (e.clientX < box.left + edge) scroller.scrollLeft -= 18;
+  const el = e.target.closest && e.target.closest('#grid .tile');
+  // over the middle of a folder: file it inside; anywhere else: show where it will land
+  if (el && el.dataset.id !== drag.id && dropMode(el, e) === 'into') { el.classList.add('drop-into'); return; }
+  showGhost(spotUnder(e));
+});
+scroller.addEventListener('drop', e => {
+  if (!startDragOK()) return;
+  e.preventDefault();
+  const id = drag.id;
+  const el = e.target.closest && e.target.closest('#grid .tile');
+  const intoFolder = el && el.dataset.id !== id && dropMode(el, e) === 'into';
+  const spot = intoFolder ? null : spotUnder(e);
+  clearDropMarks();
+  if (intoFolder) moveTile(id, el.dataset.id);
+  else placeTileAt(id, spot);
+});
+const startDragOK = () => !searchQuery && drag && tiles.some(t => t.id === drag.id);
+function cellStep() {
+  const unit = UNIT_PX[settings.tileScale] || 70;
+  return unit + Math.round(unit / 7);
+}
+// The square under the pointer, adjusted for where the tile was grabbed
+function spotUnder(e) {
+  const unit = UNIT_PX[settings.tileScale] || 70;
+  const gap = Math.round(unit / 7);
+  const step = unit + gap;
+  const groupStride = GROUP_COLS * step + gap + unit * 0.3; // four tiles, the spacer column and its gaps
+  const cs = getComputedStyle(grid);
+  const box = grid.getBoundingClientRect();
+  const x = e.clientX - box.left - parseFloat(cs.paddingLeft);
+  const y = e.clientY - box.top - parseFloat(cs.paddingTop);
+  const g = Math.max(0, Math.floor(x / groupStride));
+  const c = Math.min(GROUP_COLS - 1, Math.max(0, Math.floor((x - g * groupStride) / step)));
+  const r = Math.max(0, Math.floor(y / step));
+  const t = tiles.find(x2 => x2.id === drag.id);
+  const [w, hh] = tileDims(t, startRows);
+  return {
+    g,
+    c: Math.max(0, Math.min(GROUP_COLS - w, c - drag.grabC)),
+    r: Math.max(0, Math.min(startRows - hh, r - drag.grabR)),
+  };
+}
+function showGhost(sp) {
+  let ghost = grid.querySelector('.drop-ghost');
+  if (!ghost) { ghost = h('div', { class: 'drop-ghost' }); grid.append(ghost); }
+  const t = tiles.find(x => x.id === drag.id);
+  const [w, hh] = tileDims(t, startRows);
+  ghost.style.gridColumn = `${sp.g * (GROUP_COLS + 1) + sp.c + 1} / span ${w}`;
+  ghost.style.gridRow = `${sp.r + 1} / span ${hh}`;
+  // the grid may need a new group on the right for the outline to show
+  const groupsNow = (grid.style.gridTemplateColumns.match(/repeat/g) || []).length;
+  if (sp.g + 1 > groupsNow) {
+    const cols = [];
+    for (let g = 0; g <= sp.g; g++) cols.push(`repeat(${GROUP_COLS}, var(--unit))`, g < sp.g ? 'calc(var(--unit) * .3)' : '');
+    grid.style.gridTemplateColumns = cols.filter(Boolean).join(' ');
+  }
+}
 function clearDropMarks() {
+  document.querySelectorAll('.drop-ghost').forEach(x => x.remove());
   document.querySelectorAll('.drop-before, .drop-after, .drop-into').forEach(x => x.classList.remove('drop-before', 'drop-after', 'drop-into'));
 }
 
 // ---------------------------------------------------------------- context menu
-function showMenu(x, y, items) {
-  ctx.replaceChildren(...items.map(it => {
+// Items: '-' (separator), {header}, {sizes, current, onPick}, {label, action, danger}, or {label, sub: [items]} for a submenu.
+// Each level is its own panel inside #ctx; a submenu opens beside its item on hover, click or →, and ← or Esc closes it.
+let subTimer = 0;
+function menuPanels() { return [...ctx.querySelectorAll('.ctx-panel')]; }
+function closeSubs(level) {
+  for (const p of menuPanels()) if (+p.dataset.level >= level) p.remove();
+  ctx.querySelectorAll(`.ctx-panel[data-level="${level - 1}"] .has-sub`).forEach(b => b.setAttribute('aria-expanded', 'false'));
+}
+function placePanel(panel, x, y, flipLeft) {
+  panel.style.left = '0px';
+  panel.style.top = '0px';
+  const r = panel.getBoundingClientRect();
+  let left = x;
+  if (left + r.width > innerWidth - 8) left = flipLeft != null ? flipLeft - r.width : innerWidth - r.width - 8;
+  panel.style.left = Math.max(8, left) + 'px';
+  panel.style.top = Math.max(8, Math.min(y, innerHeight - r.height - 8)) + 'px';
+}
+function openSub(btn, items, level, focus) {
+  clearTimeout(subTimer);
+  if (btn.getAttribute('aria-expanded') === 'true') {
+    if (focus) ctx.querySelector(`.ctx-panel[data-level="${level}"] .ctx-item`)?.focus({ preventScroll: true });
+    return;
+  }
+  closeSubs(level);
+  btn.setAttribute('aria-expanded', 'true');
+  const panel = buildPanel(items, level);
+  ctx.append(panel);
+  const pr = btn.closest('.ctx-panel').getBoundingClientRect();
+  const br = btn.getBoundingClientRect();
+  placePanel(panel, pr.right - 3, br.top - 7, pr.left + 3);
+  if (focus) panel.querySelector('.ctx-item')?.focus({ preventScroll: true });
+}
+function buildPanel(items, level) {
+  const panel = h('div', { class: 'ctx-panel', role: 'menu', dataset: { level: String(level) } });
+  panel.addEventListener('pointerenter', () => clearTimeout(subTimer));
+  panel.append(...items.map(it => {
     if (it === '-') return h('div', { class: 'ctx-sep' });
     if (it.header) return h('div', { class: 'ctx-header' }, it.header);
     if (it.sizes) {
@@ -685,35 +989,66 @@ function showMenu(x, y, items) {
           onclick: () => { hideMenu(); it.onPick(s); },
         })));
     }
-    return h('button', {
+    if (it.sub) {
+      const b = h('button', {
+        type: 'button', role: 'menuitem', class: 'ctx-item has-sub', 'aria-haspopup': 'menu', 'aria-expanded': 'false',
+        onclick: () => openSub(b, it.sub, level + 1, true),
+      }, h('span', {}, it.label), h('span', { class: 'ctx-arrow', 'aria-hidden': 'true' }, '›'));
+      b.addEventListener('pointerenter', () => { clearTimeout(subTimer); subTimer = setTimeout(() => openSub(b, it.sub, level + 1, false), 160); });
+      return b;
+    }
+    const b = h('button', {
       type: 'button', role: 'menuitem', class: 'ctx-item' + (it.danger ? ' danger' : ''),
       onclick: () => { hideMenu(); it.action(); },
     }, it.label);
+    // pointing at another item closes an open submenu after a short pause (so a diagonal move into the submenu still works)
+    b.addEventListener('pointerenter', () => { clearTimeout(subTimer); subTimer = setTimeout(() => closeSubs(level + 1), 250); });
+    return b;
   }));
-  ctx.style.left = '0px';
-  ctx.style.top = '0px';
+  panel.addEventListener('keydown', e => {
+    const list = [...panel.querySelectorAll(':scope > .ctx-item')];
+    const i = list.indexOf(document.activeElement);
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      const n = list.length;
+      if (n) list[(i + (e.key === 'ArrowDown' ? 1 : -1) + n) % n].focus({ preventScroll: true });
+    } else if (e.key === 'ArrowRight' && document.activeElement?.classList.contains('has-sub')) {
+      e.preventDefault();
+      document.activeElement.click();
+    } else if ((e.key === 'ArrowLeft' || e.key === 'Escape') && level > 0) {
+      e.preventDefault();
+      e.stopPropagation();
+      const parent = ctx.querySelector(`.ctx-panel[data-level="${level - 1}"] .has-sub[aria-expanded="true"]`);
+      closeSubs(level);
+      parent?.focus({ preventScroll: true });
+    }
+  });
+  return panel;
+}
+function showMenu(x, y, items) {
+  clearTimeout(subTimer);
+  const panel = buildPanel(items, 0);
+  ctx.replaceChildren(panel);
   ctx.hidden = false;
-  const r = ctx.getBoundingClientRect();
-  ctx.style.left = Math.max(8, Math.min(x, innerWidth - r.width - 8)) + 'px';
-  ctx.style.top = Math.max(8, Math.min(y, innerHeight - r.height - 8)) + 'px';
-  const first = ctx.querySelector('.ctx-item');
+  placePanel(panel, x, y);
+  const first = panel.querySelector('.ctx-item');
   if (first) first.focus({ preventScroll: true });
 }
-function hideMenu() { ctx.hidden = true; }
+function hideMenu() { clearTimeout(subTimer); ctx.hidden = true; ctx.replaceChildren(); }
 
 function addMenu(x, y, parentId = null) {
   showMenu(x, y, [
     { label: 'Add a tile', action: () => openEditor({ type: 'link', parentId }) },
     { label: 'Add a folder', action: () => openEditor({ type: 'folder', parentId }) },
-    { label: 'Add a game…', action: () => setTimeout(() => gameMenu(x, y, parentId), 0) },
+    { label: 'Add a game', sub: gameItems(parentId) },
     ...(parentId ? [] : [{ label: 'Import bookmarks…', action: openBookmarkImport }]),
     '-',
     { label: 'Personalize…', action: openSettings },
   ]);
 }
 
-function gameMenu(x, y, parentId) {
-  showMenu(x, y, [{ label: 'All games (Games folder)', action: restoreGames }, '-', { header: 'Add one game' }, ...Object.entries(Games.LIST).map(([id, g]) => ({
+function gameItems(parentId) {
+  return [{ label: 'All games (Games folder)', action: restoreGames }, '-', { header: 'Add one game' }, ...Object.entries(Games.LIST).map(([id, g]) => ({
     label: g.title,
     action: () => {
       const t = gameTile(id);
@@ -722,7 +1057,27 @@ function gameMenu(x, y, parentId) {
       commit();
       toast(`Added ${g.title}`);
     },
-  }))]);
+  }))];
+}
+
+// "Move to" items as a tree that follows your folders: a folder with subfolders opens a submenu
+// whose first item moves the tile into that folder itself
+function moveItems(t, f, up) {
+  const skip = folder => t.type === 'folder' && isInside(t, folder.id); // a folder can't go into itself or its own subfolders
+  const canGo = folder => folder !== f.parent && folder !== up;
+  const node = folder => {
+    if (skip(folder)) return null;
+    const name = folder.title || 'Folder';
+    const kids = folder.children.filter(c => c.type === 'folder').map(node).filter(Boolean);
+    const here = canGo(folder) ? { label: name, action: () => moveTile(t.id, folder.id) } : null;
+    if (!kids.length) return here;
+    return { label: name, sub: [...(here ? [{ label: `Into “${name}”`, action: here.action }, '-'] : []), ...kids] };
+  };
+  const out = [];
+  if (f.parent && pathTo(f.parent.id).length) out.push({ label: 'Start', action: () => moveTile(t.id, null) });
+  const folders = tiles.filter(c => c.type === 'folder').map(node).filter(Boolean);
+  if (out.length && folders.length) out.push('-');
+  return [...out, ...folders];
 }
 
 function tileMenu(e, folderId) {
@@ -739,18 +1094,11 @@ function tileMenu(e, folderId) {
   else if (t.type === 'game') items.push({ label: 'Play', action: () => openGame(t.game) });
   else items.push({ label: 'Open in new tab', action: () => openUrl(t.url, true) });
   items.push({ label: 'Edit…', action: () => openEditor({ tile: t }) });
-  items.push({ sizes: true, current: t.size, onPick: s => { t.size = s; commit(); } });
+  items.push({ sizes: true, current: t.size, onPick: s => { t.size = s; const sp = (f.parent ? folderSpots : lastSpots).get(t.id); if (sp) placeTileAt(t.id, { g: sp.group, c: sp.col, r: sp.row }); else commit(); } });
   const up = f.parent ? findTile(f.parent.id).parent : null;
   if (f.parent) items.push({ label: up ? `Move up to “${up.title}”` : 'Move out of folder', action: () => moveTile(t.id, up ? up.id : null) });
-  // every folder it could go into: not where it already is (or the "move up" one), and for a folder, not itself or its own subfolders
-  const targets = everyTile().filter(x => x.tile.type === 'folder' && x.tile !== f.parent && x.tile !== up &&
-    !(t.type === 'folder' && isInside(t, x.tile.id)));
-  const moveItems = targets.map(x => ({
-    label: [...x.path.map(p => p.title), x.tile.title].join(' › '),
-    action: () => moveTile(t.id, x.tile.id),
-  }));
-  if (f.parent && pathTo(f.parent.id).length) moveItems.unshift({ label: 'Start', action: () => moveTile(t.id, null) });
-  if (moveItems.length) items.push('-', { header: 'Move to folder' }, ...moveItems);
+  const moves = moveItems(t, f, up);
+  if (moves.length) items.push({ label: 'Move to folder', sub: moves });
   items.push('-', { label: t.type === 'folder' ? 'Delete folder' : 'Delete', danger: true, action: () => deleteTile(t.id) });
   showMenu(x, y, items);
 }
@@ -759,6 +1107,7 @@ function tileMenu(e, folderId) {
 function openFolder(id) {
   hideMenu();
   openFolderId = id;
+  folderOverlay.hidden = false; // so the folder can measure its width
   renderFolder({ animate: true });
   openOverlay(folderOverlay);
 }
@@ -987,7 +1336,12 @@ function saveEditedTile(d, editId, parentId) {
   let newFolderId = null;
   if (editId) {
     const f = findTile(editId);
-    if (f) { d.id = editId; f.list[f.list.indexOf(f.tile)] = d; }
+    if (f) {
+      d.id = editId;
+      f.list[f.list.indexOf(f.tile)] = d;
+      const sp = d.size !== f.tile.size && (f.parent ? folderSpots : lastSpots).get(d.id);
+      if (sp) { closeEditor(); placeTileAt(d.id, { g: sp.group, c: sp.col, r: sp.row }); return; }
+    }
   } else {
     d.id = uid();
     const parent = findFolder(parentId);
@@ -1039,7 +1393,7 @@ async function refreshWeather(force = false) {
     weatherWidget.dataset.place = w.place || '';
     weatherWidget.title = w.place ? `Weather for ${w.place}` : 'Weather';
   } catch (err) {
-    console.warn('Weather failed', err);
+    console.info('Weather unavailable:', err && err.message);
     $('#w-icon').innerHTML = Weather.icon('cloud');
     $('#w-temp').textContent = '--°';
     $('#w-desc').textContent = 'Weather unavailable';
@@ -1412,7 +1766,16 @@ async function websiteIcon(pageUrl) {
   const timer = setTimeout(() => ctrl.abort(), 7000);
   let res, html;
   try {
-    res = await fetch(pageUrl, { signal: ctrl.signal, credentials: 'omit' });
+    // Redirects aren't followed: a redirect to another site is refused by Chrome and shows up as an extension error.
+    // Instead, try the same address and its https version (both are covered by the permission asked for at import).
+    const u = new URL(pageUrl);
+    const tries = [...new Set([pageUrl, `https://${u.hostname}${u.pathname}`, `https://${u.hostname}/`])];
+    for (const t of tries) {
+      res = await fetch(t, { signal: ctrl.signal, credentials: 'omit', redirect: 'manual' }).catch(() => null);
+      if (res && res.type !== 'opaqueredirect' && res.ok) break;
+      res = null;
+    }
+    if (!res) return null;
     html = /html/i.test(res.headers.get('content-type') || '') ? (await res.text()).slice(0, 400000) : '';
   } finally {
     clearTimeout(timer);
@@ -1483,8 +1846,8 @@ function startBookmarkImport() {
   const picks = selectedBookmarks().filter(n => !(bm.skipDupes.checked && existing.has(urlKey(n.url))));
   const web = bm.icons.checked && hasChrome && chrome.permissions && picks.length;
   const origins = web ? [...new Set(picks.map(n => {
-    try { const u = new URL(n.url); return /^https?:$/.test(u.protocol) ? `${u.protocol}//${u.hostname}/*` : null; } catch { return null; }
-  }).filter(Boolean))] : [];
+    try { const u = new URL(n.url); return /^https?:$/.test(u.protocol) ? [`https://${u.hostname}/*`, `http://${u.hostname}/*`] : null; } catch { return null; }
+  }).filter(Boolean).flat())] : [];
   const ask = origins.length ? chrome.permissions.request({ origins }).catch(() => false) : Promise.resolve(false);
 
   ask.then(async allowed => {
@@ -1992,7 +2355,8 @@ setInterval(() => tickClock(), 1000);
 
 // keep several open new-tab pages in sync
 Store.onChange(changes => {
-  if (changes.tiles && JSON.stringify(changes.tiles.newValue) !== JSON.stringify(tiles)) {
+  if (changes.tiles && JSON.stringify(changes.tiles.newValue) !== JSON.stringify(tiles) &&
+      !recentSaves.includes(JSON.stringify(changes.tiles.newValue))) {
     tiles = sanitizeTiles(changes.tiles.newValue);
     renderGrid();
     if (openFolderId) renderFolder();

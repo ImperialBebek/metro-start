@@ -96,7 +96,7 @@ const Weather = (() => {
       return { lat: c.lat, lon: c.lon, name, at: Date.now() };
     } catch (err) {
       // Location off in system settings, blocked, or too slow: fall back to an approximate location
-      console.warn('Precise location unavailable; using approximate location.', err && (err.message || err.code));
+      console.info('Precise location unavailable; using approximate location.', err && (err.message || err.code));
       return { ...(await ipLocate()), at: Date.now() };
     }
   }

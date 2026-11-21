@@ -11,12 +11,15 @@
 
 Every network request is answered with simulated data (weather, headlines, prices, Wikimedia, websites), and the Chrome extension APIs are stubbed, so the suite runs offline and gives the same results every time.
 
+`extension.py` loads the folder as a real unpacked extension (so Chrome's own storage is used) and checks that tiles stay where you put them: dragging to an empty square, dragging onto another tile, quick resizes, reloading and a second tab.
+
 ## Run
 
 ```bash
 pip install -r tests/requirements.txt
 python -m playwright install chromium
 python tests/regression.py
+python tests/extension.py
 ```
 
 Each check prints `PASS` or `FAIL`, followed by a total. The script exits with code 1 if anything fails, so it can run in CI.
