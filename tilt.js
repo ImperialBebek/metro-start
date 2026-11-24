@@ -42,7 +42,7 @@ const Tilt = (() => {
       if (!el || !container.contains(el) || !enabled()) return;
       const r = returning.get(el);
       if (r) r.cancel();
-      press = { el, id: e.pointerId, x: e.clientX, y: e.clientY };
+      press = { el, id: e.pointerId, x: e.clientX, y: e.clientY, rect: el.getBoundingClientRect() };
       el.style.transform = transform(el, e.clientX, e.clientY);
     });
     container.addEventListener('pointermove', e => {
@@ -52,11 +52,16 @@ const Tilt = (() => {
     });
     const end = delay => e => {
       if (!press || (e.pointerId !== undefined && press.id !== e.pointerId)) return;
-      const { el } = press;
+      const { el, rect } = press;
       release(el, delay);
       press = null;
-      // the tilt can pull the tile's edge out from under a still pointer; the press still counts as a tap on it
-      if (e.type === 'pointerup' && !el.contains(e.target) && container.contains(e.target)) el.click();
+      // the tilt can pull the tile's edge out from under a still pointer: a release inside the tile's
+      // untilted bounds still clicks it, with the same modifier keys
+      const inside = e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom;
+      if (e.type === 'pointerup' && e.button === 0 && inside && !el.contains(e.target) && container.contains(e.target)) {
+        const { clientX, clientY, ctrlKey, metaKey, shiftKey, altKey } = e;
+        el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, clientX, clientY, ctrlKey, metaKey, shiftKey, altKey }));
+      }
     };
     window.addEventListener('pointerup', end(RETURN_DELAY));
     window.addEventListener('pointercancel', end(0));
