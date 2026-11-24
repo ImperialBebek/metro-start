@@ -750,7 +750,11 @@ function bindTileEvents(container, getFolderId) {
     }
     e.preventDefault();
     // the page keeps showing the launch while the site loads
-    flipThen(el, t, () => { if (!el.closest('.preview-stage')) Motion.zoomFrom(el); openUrl(t.url, false); });
+    flipThen(el, t, () => {
+      // downloads and blocked navigations leave the page up, so the launch layer clears itself
+      if (!el.closest('.preview-stage')) Motion.zoomFrom(el).then(() => setTimeout(() => Motion.clearZooms(), 1500));
+      openUrl(t.url, false);
+    });
   });
   container.addEventListener('auxclick', e => {
     const el = e.target.closest('.tile');
