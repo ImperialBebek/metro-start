@@ -26,6 +26,7 @@
   /* metroweb motion.ts: Silverlight ExponentialEase sampled into linear(); motion.js uses the same curves */
   --ease-out-2: linear(0, 0.0701, 0.1359, 0.1977, 0.2558, 0.3104, 0.3617, 0.4098, 0.4551, 0.4976, 0.5375, 0.575, 0.6102, 0.6433, 0.6744, 0.7036, 0.7311, 0.7568, 0.7811, 0.8038, 0.8252, 0.8452, 0.8641, 0.8818, 0.8985, 0.9141, 0.9288, 0.9426, 0.9555, 0.9677, 0.9792, 0.9899, 1);
   --ease-out-6: linear(0, 0.1714, 0.3135, 0.4313, 0.5289, 0.6099, 0.677, 0.7327, 0.7788, 0.817, 0.8487, 0.875, 0.8968, 0.9149, 0.9299, 0.9423, 0.9526, 0.9611, 0.9682, 0.974, 0.9789, 0.9829, 0.9863, 0.9891, 0.9913, 0.9933, 0.9948, 0.9961, 0.9972, 0.9981, 0.9989, 0.9995, 1);
+  --ease-in-6: linear(0, 0.0005, 0.0011, 0.0019, 0.0028, 0.0039, 0.0052, 0.0067, 0.0087, 0.0109, 0.0137, 0.0171, 0.0211, 0.026, 0.0318, 0.0389, 0.0474, 0.0577, 0.0701, 0.0851, 0.1032, 0.125, 0.1513, 0.183, 0.2212, 0.2673, 0.323, 0.3901, 0.4711, 0.5687, 0.6865, 0.8286, 1);
   --ease: var(--ease-out-6);
   --panel: #1d1d1d;
 }
@@ -378,6 +379,10 @@ select.text { cursor: pointer; }
   padding: 30px var(--edge);
   background: #232323;
 }
+/* the launch layer: a tile grown to the whole screen, and its icon (motion.js zoomFrom) */
+.launch-fill, .launch-mark { position: fixed; left: 0; top: 0; z-index: 45; pointer-events: none; }
+.launch-fill { width: 100vw; height: 100vh; transform-origin: 0 0; }
+.launch-mark { display: grid; place-items: center; margin: 0; }
 /* closing overlays play their exit (motion.js) without catching clicks meant for Start */
 .overlay.closing, .game-overlay.closing { pointer-events: none; }
 .band-inner { max-width: 1100px; margin: 0 auto; }
@@ -1013,11 +1018,14 @@ input[type="color"] { width: 34px; height: 34px; padding: 0; border: 2px solid r
   overflow-y: auto;
   background: var(--panel);
   box-shadow: -12px 0 40px rgba(0, 0, 0, .45);
-  transform: translateX(100%);
+  /* metro-launcher's panel: in, fade and slide 5% of the screen for 340 ms; out, fade and slide 3% for 160 ms */
+  opacity: 0;
+  transform: translateX(3vw);
   visibility: hidden;
-  transition: transform .4s var(--ease), visibility 0s linear .4s;
+  transition: opacity .16s var(--ease-in-6), transform .16s var(--ease-in-6), visibility 0s linear .16s;
 }
-#settings.open { transform: none; visibility: visible; transition: transform .4s var(--ease), visibility 0s; }
+#settings.open { opacity: 1; transform: none; visibility: visible; transition: opacity .34s var(--ease), transform .34s var(--ease), visibility 0s; }
+#settings:not(.open) { transform: translateX(3vw); }
 .set-head {
   position: sticky;
   top: 0;

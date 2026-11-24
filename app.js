@@ -425,32 +425,30 @@ const ctx = $('#ctx');
 const settingsPanel = $('#settings');
 const settingsScrim = $('#settings-scrim');
 
-// Dialogs swivel in over a fading scrim (Toolkit SwivelTransition, as metroweb's MessageBox); the folder band turns like a page
+// Bands slide in 8% of the screen over a fading scrim and leave sliding 3% (metro-launcher's panels)
 const overlayExits = new WeakMap();
 const isOpen = el => !el.hidden && !el.classList.contains('closing');
-function openOverlay(el, { enter = 'swivel' } = {}) {
+function openOverlay(el) {
   clearTimeout(overlayExits.get(el));
   el.classList.remove('closing');
   el.hidden = false;
   const band = el.querySelector('.band');
-  if (band) band.getAnimations().forEach(a => a.cancel());
-  if (band && enter === 'swivel') Motion.swivel(band, 'in');
-  if (band && enter === 'turn') Motion.pageTurn(band, 'forwardIn');
+  if (band) { band.getAnimations().forEach(a => a.cancel()); Motion.panelIn(band, { distance: 0.08 }); }
   requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('open')));
 }
-function closeOverlay(el, { exit = 'swivel' } = {}) {
+function closeOverlay(el) {
   el.classList.remove('open');
   if (el.hidden) return;
   const band = el.querySelector('.band');
   if (!band || Motion.reduced()) { el.hidden = true; return; }
   el.classList.add('closing');
-  (exit === 'turn' ? Motion.pageTurn(band, 'backwardOut') : Motion.swivel(band, 'out'));
+  Motion.panelOut(band);
   clearTimeout(overlayExits.get(el));
   overlayExits.set(el, setTimeout(() => {
     el.hidden = true;
     el.classList.remove('closing');
     band.getAnimations().forEach(a => a.cancel());
-  }, 260));
+  }, 170));
 }
 
 // ---------------------------------------------------------------- tiles
@@ -681,9 +679,9 @@ function renderGrid({ animate = false } = {}) {
   if (animate && settings.animations) entrance(grid);
 }
 
-// Tiles feather in on a turnstile, bottom-right first (metroweb's Start feather)
+// Tiles sweep in from the right as a wave, left columns first (metro-launcher's entrance)
 function entrance(container) {
-  Motion.featherIn(container);
+  Motion.waveIn(container);
 }
 
 function layoutGrid() {
@@ -702,7 +700,7 @@ function layoutGrid() {
 
 
 // ---- flip on open: the tile turns over like a card, shows what's opening, then opens it
-// one of the three live tile flips decoded from the phone's FlipTile.uix
+// the tile tips over on its horizontal axis, shows what's opening, then opens it (metro-launcher's flip)
 function flipThen(el, t, done) {
   if (!settings.flipOpen || Motion.reduced() || el.closest('.preview-stage')) { done(); return; }
   if (el.classList.contains('flipping')) return;
@@ -725,12 +723,13 @@ function resetFlip(el) {
 // coming back with the browser's Back button can restore a half-flipped page
 window.addEventListener('pageshow', e => {
   document.querySelectorAll('.tile.flipping').forEach(resetFlip);
-  if (e.persisted) { Motion.featherReset(grid); if (settings.animations) entrance(grid); }
+  Motion.clearZooms(false);
+  if (e.persisted && settings.animations) entrance(grid);
 });
-// Start feathers away from the tapped tile, which goes last, then the app opens (TileClickedNavigateAway)
+// The tile grows to fill the screen in its colour, then what it opens fades in over it (metro-launcher's launch)
 function launchFrom(el, open) {
-  if (!el.closest('#grid')) { open(); return; }
-  Motion.featherOut(grid, el).then(open);
+  if (el.closest('.preview-stage')) { open(); return; }
+  Motion.zoomFrom(el).then(() => { open(); Motion.clearZooms(); });
 }
 
 // ---- shared tile interactions (main grid + folder grid)
@@ -750,7 +749,8 @@ function bindTileEvents(container, getFolderId) {
       return;
     }
     e.preventDefault();
-    flipThen(el, t, () => { if (el.closest('#grid')) Motion.featherOut(grid, el); openUrl(t.url, false); });
+    // the page keeps showing the launch while the site loads
+    flipThen(el, t, () => { if (!el.closest('.preview-stage')) Motion.zoomFrom(el); openUrl(t.url, false); });
   });
   container.addEventListener('auxclick', e => {
     const el = e.target.closest('.tile');
@@ -1114,9 +1114,8 @@ function openFolder(id) {
   openFolderId = id;
   const wasOpen = isOpen(folderOverlay);
   folderOverlay.hidden = false; // so the folder can measure its width
-  if (!wasOpen) openOverlay(folderOverlay, { enter: 'turn' });
+  if (!wasOpen) openOverlay(folderOverlay);
   renderFolder({ animate: true });
-  Motion.continuumShow(folderTitle);
 }
 function renderFolder({ animate = false } = {}) {
   const f = findFolder(openFolderId);
@@ -1140,7 +1139,7 @@ function renderFolder({ animate = false } = {}) {
 }
 function closeFolder() {
   openFolderId = null;
-  closeOverlay(folderOverlay, { exit: 'turn' });
+  closeOverlay(folderOverlay);
 }
 
 // Esc and the overlay backdrop go up one level; Done closes
@@ -2202,7 +2201,7 @@ function openGame(id) {
   gameOverlay.classList.remove('closing');
   gameOverlay.getAnimations().forEach(a => a.cancel());
   gameOverlay.hidden = false;
-  Motion.pageTurn(gameOverlay, 'forwardIn');
+  Motion.panelIn(gameOverlay);
   const keys = [];
   const api = {
     stage,
@@ -2249,8 +2248,8 @@ function closeGame() {
   if (Motion.reduced()) done();
   else {
     gameOverlay.classList.add('closing');
-    Motion.pageTurn(gameOverlay, 'backwardOut');
-    gameExit = setTimeout(done, 140);
+    Motion.panelOut(gameOverlay);
+    gameExit = setTimeout(done, 170);
   }
   if (settings.animations) entrance(grid);
 }

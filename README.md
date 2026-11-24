@@ -16,7 +16,7 @@ A tile Start screen inspired by Windows 8 for Chrome's new tab page, with folder
 - **Windows 8 parallax.** The wallpaper slides more slowly than the tiles as you scroll.
 - **Ten offline games.** Solitaire, Minesweeper, Sudoku (with a daily puzzle), Cat Nap (a cat logic puzzle with a daily puzzle), 2048, Five Letters (a daily word game), Pairs (animal memory match), Snake, Blocks and Bricks. Progress and best scores are saved as you play. Lost your Games folder? **+ → Add a game → All games** brings it back.
 - **Type to search.** Start typing anywhere to filter your tiles. Enter opens the first match; Shift+Enter searches the web.
-- **Windows Phone motion and type.** Tiles feather in on a turnstile, bottom-right first, and tip under the pointer like the phone's TiltEffect; folders and games turn like pages, dialogs swivel, and flip-on-open plays the phone's live tile flips. The timings and curves come from [metroweb](https://github.com/ImperialBebek/metroweb), decoded from Windows Phone 8.1. Text is set in Metroweb Sans (Selawik). Motion follows your system's reduce-motion setting and the Animations switch.
+- **Metro motion and type.** Tiles sweep in as a wave and tip under the pointer like the phone's TiltEffect; opening a tile grows it to fill the screen, panels slide in, and flip-on-open turns the tile over. The transitions come from [metro-launcher](https://github.com/ImperialBebek/metro-launcher), the Metro TV home screen, built for big screens; the curves and the font come from [metroweb](https://github.com/ImperialBebek/metroweb). Text is set in Metroweb Sans (Selawik). Motion follows your system's reduce-motion setting and the Animations switch.
 - **Personalize** fonts, tile size, animations, flip-on-open, clock format, units and more. Export and import a backup of everything.
 
 | Folders | Personalize |
@@ -71,7 +71,7 @@ See [PRIVACY.md](PRIVACY.md) for what is sent where.
 | `manifest.json` | Extension manifest (Manifest V3); overrides the new tab page |
 | `newtab.html`, `styles.css` | Page markup and Metro styling |
 | `app.js` | Tiles, folders, drag and drop, editor, menus, settings, search, import, games screen |
-| `motion.js` | Turnstile, feather, continuum, swivel and tile flip animations (from metroweb) |
+| `motion.js` | Wave entrance, launch zoom, panel and flip animations (from metro-launcher) |
 | `tilt.js` | The press tilt, a port of the Windows Phone Toolkit's TiltEffect (Ms-PL) |
 | `fonts/` | Metroweb Sans (Selawik, OFL) |
 | `store.js` | Storage (`chrome.storage.local`, or `localStorage` when the page is opened directly) |
@@ -98,7 +98,7 @@ The `tests/` folder has an automated suite that drives the page in Chromium with
 
 ## Credits
 
-- Motion values and Metroweb Sans come from [metroweb](https://github.com/ImperialBebek/metroweb). `tilt.js` is a port of the Windows Phone Toolkit's TiltEffect under the Ms-PL, and the font is under the SIL Open Font License; see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+- Transitions come from [metro-launcher](https://github.com/ImperialBebek/metro-launcher); easing curves and Metroweb Sans from [metroweb](https://github.com/ImperialBebek/metroweb). `tilt.js` is a port of the Windows Phone Toolkit's TiltEffect under the Ms-PL, and the font is under the SIL Open Font License; see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 - The Five Letters word list is derived from the Hunspell en_US dictionary, built from SCOWL by Kevin Atkinson and others. See [games/WORDLIST-LICENSE.txt](games/WORDLIST-LICENSE.txt).
 - Windows, Windows 8 and Metro are associated with Microsoft. This project is an independent tribute and is not affiliated with or endorsed by Microsoft.
 
