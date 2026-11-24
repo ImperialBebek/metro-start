@@ -6,7 +6,7 @@ A tile Start screen inspired by Windows 8 for Chrome's new tab page, with folder
 
 ## Features
 
-- **Tiles in the Windows 8 style.** Four sizes (small, medium, wide, large), the Metro color palette or any color. Each site tile shows its icon at the top left with the site's name in bold and its address underneath.
+- **Tiles in the Windows 8 style.** Four sizes (small, medium, wide, large), the 20 Windows Phone accent colors or any color. Each site tile shows its icon at the top left with the site's name in bold and its address underneath.
 - **Tiles stay where you put them.** Drag a tile to any square and it stays there; an outline shows where it will land, and tiles in the way move aside. New tiles and imported bookmarks are added after your existing tiles, in order, in groups four tiles wide like Windows 8.
 - **Folders, nested as deep as you like.** Folder tiles preview what's inside. Open a folder to see its path, jump back along it, or press Esc to go up one level.
 - **Drag and drop.** Move tiles anywhere, drop a tile onto the middle of a folder to file it, or drag it out of an open folder to move it up a level.
@@ -16,6 +16,7 @@ A tile Start screen inspired by Windows 8 for Chrome's new tab page, with folder
 - **Windows 8 parallax.** The wallpaper slides more slowly than the tiles as you scroll.
 - **Ten offline games.** Solitaire, Minesweeper, Sudoku (with a daily puzzle), Cat Nap (a cat logic puzzle with a daily puzzle), 2048, Five Letters (a daily word game), Pairs (animal memory match), Snake, Blocks and Bricks. Progress and best scores are saved as you play. Lost your Games folder? **+ → Add a game → All games** brings it back.
 - **Type to search.** Start typing anywhere to filter your tiles. Enter opens the first match; Shift+Enter searches the web.
+- **Windows Phone motion and type.** Tiles feather in on a turnstile, bottom-right first, and tip under the pointer like the phone's TiltEffect; folders and games turn like pages, dialogs swivel, and flip-on-open plays the phone's live tile flips. The timings and curves come from [metroweb](https://github.com/ImperialBebek/metroweb), decoded from Windows Phone 8.1. Text is set in Metroweb Sans (Selawik). Motion follows your system's reduce-motion setting and the Animations switch.
 - **Personalize** fonts, tile size, animations, flip-on-open, clock format, units and more. Export and import a backup of everything.
 
 | Folders | Personalize |
@@ -70,6 +71,9 @@ See [PRIVACY.md](PRIVACY.md) for what is sent where.
 | `manifest.json` | Extension manifest (Manifest V3); overrides the new tab page |
 | `newtab.html`, `styles.css` | Page markup and Metro styling |
 | `app.js` | Tiles, folders, drag and drop, editor, menus, settings, search, import, games screen |
+| `motion.js` | Turnstile, feather, continuum, swivel and tile flip animations (from metroweb) |
+| `tilt.js` | The press tilt, a port of the Windows Phone Toolkit's TiltEffect (Ms-PL) |
+| `fonts/` | Metroweb Sans (Selawik, OFL) |
 | `store.js` | Storage (`chrome.storage.local`, or `localStorage` when the page is opened directly) |
 | `weather.js` | Weather and city search (Open-Meteo) |
 | `widgets.js` | News and Markets widgets |
@@ -94,9 +98,10 @@ The `tests/` folder has an automated suite that drives the page in Chromium with
 
 ## Credits
 
+- Motion values and Metroweb Sans come from [metroweb](https://github.com/ImperialBebek/metroweb). `tilt.js` is a port of the Windows Phone Toolkit's TiltEffect under the Ms-PL, and the font is under the SIL Open Font License; see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 - The Five Letters word list is derived from the Hunspell en_US dictionary, built from SCOWL by Kevin Atkinson and others. See [games/WORDLIST-LICENSE.txt](games/WORDLIST-LICENSE.txt).
 - Windows, Windows 8 and Metro are associated with Microsoft. This project is an independent tribute and is not affiliated with or endorsed by Microsoft.
 
 ## License
 
-[MIT](LICENSE) © 2026 Alireza Farmad
+[MIT](LICENSE) © 2026 Alireza Farmad, except the third-party parts listed in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
