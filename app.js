@@ -2266,7 +2266,8 @@ function closeGame() {
   // like leaving fullscreen TV: Start flies back out around the game's tile, which stays put
   const from = launchedTile && launchedTile.isConnected ? launchedTile : null;
   launchedTile = null;
-  if (settings.animations) entrance(from ? from.parentElement : grid, { anchor: from, keepAnchor: true });
+  // runs even with Animations off: it also brings back tiles a launch left pushed away
+  entrance(from ? from.parentElement : grid, { anchor: from, keepAnchor: true });
 }
 $('#game-back').addEventListener('click', closeGame);
 // after clicking a toolbar button, hand the keyboard back to the game (so Enter or Space doesn't press the button again)
