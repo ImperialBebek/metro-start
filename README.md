@@ -16,7 +16,7 @@ A tile Start screen inspired by Windows 8 for Chrome's new tab page, with folder
 - **Windows 8 parallax.** The wallpaper slides more slowly than the tiles as you scroll.
 - **Ten offline games.** Solitaire, Minesweeper, Sudoku (with a daily puzzle), Cat Nap (a cat logic puzzle with a daily puzzle), 2048, Five Letters (a daily word game), Pairs (animal memory match), Snake, Blocks and Bricks. Progress and best scores are saved as you play. Lost your Games folder? **+ → Add a game → All games** brings it back.
 - **Type to search.** Start typing anywhere to filter your tiles. Enter opens the first match; Shift+Enter searches the web.
-- **Metro motion and type.** Tiles sweep in as a wave and tip under the pointer like the phone's TiltEffect; opening a tile grows it to fill the screen, panels slide in, and flip-on-open turns the tile over. The transitions come from [metro-launcher](https://github.com/ImperialBebek/metro-launcher), the Metro TV home screen, built for big screens; the curves and the font come from [metroweb](https://github.com/ImperialBebek/metroweb). Text is set in Metroweb Sans (Selawik). Motion follows your system's reduce-motion setting and the Animations switch.
+- **Metro motion and type.** Start flies in out of its biggest tile in 3D, and tiles tip under the pointer like the phone's TiltEffect. Opening a tile pushes the rest of Start back while the tile opens up to the whole screen, panels slide in, and flip-on-open turns the tile over. The transitions come from [metro-launcher](https://github.com/ImperialBebek/metro-launcher), the Metro TV home screen, after the Xbox One dashboard; the curves and the font come from [metroweb](https://github.com/ImperialBebek/metroweb). Text is set in Metroweb Sans (Selawik). Motion follows your system's reduce-motion setting and the Animations switch.
 - **Personalize** fonts, tile size, animations, flip-on-open, clock format, units and more. Export and import a backup of everything.
 
 | Folders | Personalize |
@@ -71,7 +71,7 @@ See [PRIVACY.md](PRIVACY.md) for what is sent where.
 | `manifest.json` | Extension manifest (Manifest V3); overrides the new tab page |
 | `newtab.html`, `styles.css` | Page markup and Metro styling |
 | `app.js` | Tiles, folders, drag and drop, editor, menus, settings, search, import, games screen |
-| `motion.js` | Wave entrance, launch zoom, panel and flip animations (from metro-launcher) |
+| `motion.js` | 3D fly-in entrance, launch, panel and flip animations (from metro-launcher) |
 | `tilt.js` | The press tilt, a port of the Windows Phone Toolkit's TiltEffect (Ms-PL) |
 | `fonts/` | Metroweb Sans (Selawik, OFL) |
 | `store.js` | Storage (`chrome.storage.local`, or `localStorage` when the page is opened directly) |

@@ -679,9 +679,9 @@ function renderGrid({ animate = false } = {}) {
   if (animate && settings.animations) entrance(grid);
 }
 
-// Tiles sweep in from the right as a wave, left columns first (metro-launcher's entrance)
-function entrance(container) {
-  Motion.waveIn(container);
+// Tiles fly out of the biggest tile in 3D (metro-launcher's Xbox One dashboard entrance)
+function entrance(container, opts) {
+  Motion.flyIn(container, { withHeader: container === grid, ...opts });
 }
 
 function layoutGrid() {
@@ -726,9 +726,12 @@ window.addEventListener('pageshow', e => {
   Motion.clearZooms(false);
   if (e.persisted && settings.animations) entrance(grid);
 });
-// The tile grows to fill the screen in its colour, then what it opens fades in over it (metro-launcher's launch)
+// Start recedes while the tile opens up to the whole screen in its colour, then what it opens fades in over it
+// (metro-launcher's launch)
+let launchedTile = null;
 function launchFrom(el, open) {
   if (el.closest('.preview-stage')) { open(); return; }
+  launchedTile = el;
   Motion.zoomFrom(el).then(() => { open(); Motion.clearZooms(); });
 }
 
@@ -752,7 +755,12 @@ function bindTileEvents(container, getFolderId) {
     // the page keeps showing the launch while the site loads
     flipThen(el, t, () => {
       // downloads and blocked navigations leave the page up, so the launch layer clears itself
-      if (!el.closest('.preview-stage')) Motion.zoomFrom(el).then(() => setTimeout(() => Motion.clearZooms(), 1500));
+      if (!el.closest('.preview-stage')) {
+        Motion.zoomFrom(el).then(() => setTimeout(() => {
+          Motion.clearZooms();
+          if (el.isConnected) entrance(el.parentElement, { anchor: el, keepAnchor: true });
+        }, 1500));
+      }
       openUrl(t.url, false);
     });
   });
@@ -2255,7 +2263,10 @@ function closeGame() {
     Motion.panelOut(gameOverlay);
     gameExit = setTimeout(done, 170);
   }
-  if (settings.animations) entrance(grid);
+  // like leaving fullscreen TV: Start flies back out around the game's tile, which stays put
+  const from = launchedTile && launchedTile.isConnected ? launchedTile : null;
+  launchedTile = null;
+  if (settings.animations) entrance(from ? from.parentElement : grid, { anchor: from, keepAnchor: true });
 }
 $('#game-back').addEventListener('click', closeGame);
 // after clicking a toolbar button, hand the keyboard back to the game (so Enter or Space doesn't press the button again)

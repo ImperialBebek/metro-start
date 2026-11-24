@@ -379,10 +379,10 @@ select.text { cursor: pointer; }
   padding: 30px var(--edge);
   background: #232323;
 }
-/* the launch layer: a tile grown to the whole screen, and its icon (motion.js zoomFrom) */
-.launch-fill, .launch-mark { position: fixed; left: 0; top: 0; z-index: 45; pointer-events: none; }
-.launch-fill { width: 100vw; height: 100vh; transform-origin: 0 0; }
-.launch-mark { display: grid; place-items: center; margin: 0; }
+/* the launch layer: a tile opened up to the whole screen, its icon and its name (motion.js zoomFrom) */
+.launch-layer { position: fixed; left: 0; top: 0; z-index: 45; pointer-events: none; }
+.launch-fill { width: 100vw; height: 100vh; }
+.launch-mark { display: grid; place-items: center; transform-origin: 50% 50%; }
 /* closing overlays play their exit (motion.js) without catching clicks meant for Start */
 .overlay.closing, .game-overlay.closing { pointer-events: none; }
 .band-inner { max-width: 1100px; margin: 0 auto; }
