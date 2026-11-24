@@ -52,8 +52,11 @@ const Tilt = (() => {
     });
     const end = delay => e => {
       if (!press || (e.pointerId !== undefined && press.id !== e.pointerId)) return;
-      release(press.el, delay);
+      const { el } = press;
+      release(el, delay);
       press = null;
+      // the tilt can pull the tile's edge out from under a still pointer; the press still counts as a tap on it
+      if (e.type === 'pointerup' && !el.contains(e.target) && container.contains(e.target)) el.click();
     };
     window.addEventListener('pointerup', end(RETURN_DELAY));
     window.addEventListener('pointercancel', end(0));
