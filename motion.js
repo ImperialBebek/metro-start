@@ -10,6 +10,8 @@ const Motion = (() => {
     return `linear(${Array.from({ length: 33 }, (_, i) => +f(i / 32).toFixed(4)).join(', ')})`;
   };
   const OUT_6 = expo(true), IN_6 = expo(false), OUT_4_5 = expo(true, 4.5), IN_3 = expo(false, 3);
+  // WP8.1's Log / Exp interpolation at weight 150 (ln 150 = 5.01): Start folders' slides and fades
+  const OUT_5 = expo(true, 5), IN_5 = expo(false, 5);
 
   let enabled = true;
   const reduced = () => !enabled || matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -176,5 +178,5 @@ const Motion = (() => {
     await show.finished.catch(() => {});
   }
 
-  return { OUT_6, IN_6, setEnabled: on => { enabled = on; }, reduced, flyIn, zoomFrom, clearZooms, panelIn, panelOut, flipTile };
+  return { OUT_6, IN_6, OUT_5, IN_5, setEnabled: on => { enabled = on; }, reduced, flyIn, zoomFrom, clearZooms, panelIn, panelOut, flipTile };
 })();

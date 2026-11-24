@@ -420,6 +420,19 @@ select.text { cursor: pointer; }
 .crumb:hover { opacity: 1; text-decoration: underline; }
 .crumb-sep { opacity: .5; }
 .crumb-sep:last-child { display: none; }
+/* a Start folder open in place (WP8.1): no scrim, Start parts around it, the folder sits on a 20% black shade */
+#folder-overlay.inline { align-items: flex-start; background: transparent; opacity: 1; transition: none; }
+#folder-overlay.inline #folder-band {
+  position: absolute;
+  left: 0;
+  right: 0;
+  max-height: none;
+  padding-block: 18px 22px;
+  background: rgba(0, 0, 0, .2);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, .45);
+}
+#folder-overlay.inline .band-inner { max-width: 1100px; margin: 0; }
+#folder-overlay.inline #folder-grid { max-height: none; }
 #folder-overlay.drop-out { background: rgba(0, 0, 0, .4); outline: 3px dashed rgba(255, 255, 255, .6); outline-offset: -14px; }
 
 /* ---------- form controls ---------- */

@@ -671,6 +671,7 @@ function renderGrid({ animate = false } = {}) {
     if (changed) saveTilesSoon();
   }
   grid.replaceChildren(...els);
+  if (openFolderId) placeFold();
   const hint = $('#empty-hint');
   hint.hidden = list.length > 0;
   hint.textContent = q
@@ -743,7 +744,7 @@ function bindTileEvents(container, getFolderId) {
     const f = findTile(el.dataset.id);
     if (!f) return;
     const t = f.tile;
-    if (t.type === 'folder') { e.preventDefault(); flipThen(el, t, () => openFolder(t.id)); return; }
+    if (t.type === 'folder') { e.preventDefault(); openFolder(t.id); return; }
     if (t.type === 'game') { e.preventDefault(); flipThen(el, t, () => launchFrom(el, () => openGame(t.game))); return; }
     const newTab = e.ctrlKey || e.metaKey || e.shiftKey;
     if (newTab) {
@@ -1121,15 +1122,90 @@ function tileMenu(e, folderId) {
 }
 
 // ---------------------------------------------------------------- folders
+// Windows Phone 8.1 Update 1 folders open in place on Start (startmenu.dll, FOLDERGRID*.UIX): everything below the
+// folder tile slides down to make room (SmallTileVerticalSlide, Log w150), the folder tile bounces
+// (AnimationsFolderExpandTileBounce: 25 px on a 480 px phone, a quarter of a small tile), and the contents fade in over
+// a 20% black shade (ExpandAlpha, Exp w150; ExpandedFolderShadingAlpha #33000000). Collapsing reverses it (CollapseAlpha,
+// Log w150). The dumps don't have the keyframe times; the durations here are estimated.
+// Without the folder's tile on screen (a search, say) the folder opens as a band in the middle instead.
+const FOLD_OPEN = 330, FOLD_CLOSE = 240, FOLD_BOUNCE = 0.25;
+const foldBand = folderBand.querySelector('.band-inner');
+let foldAnchorId = null;
+let foldTimer = 0;
+const foldInline = () => folderOverlay.classList.contains('inline');
+const startTileEl = id => [...grid.children].find(el => el.classList.contains('tile') && el.dataset.id === id) || null;
+const shiftY = el => { const t = getComputedStyle(el).translate; return t && t !== 'none' ? parseFloat(t.split(' ')[1]) || 0 : 0; };
+// moves a Start tile (or the header) to `to` px up or down; only what was already in the fold animates
+function foldSlide(el, to, { animate, duration, bounce = 0 }) {
+  const from = shiftY(el);
+  const known = animate === 'all' || el._foldY !== undefined;
+  el._foldY = to;
+  el.style.translate = to ? `0 ${to}px` : '';
+  if (!animate || !known || Motion.reduced() || (Math.abs(from - to) < 0.5 && !bounce)) return;
+  const kf = bounce
+    ? [{ translate: `0 ${from}px`, easing: Motion.OUT_5 }, { translate: `0 ${to + bounce}px`, offset: 0.6, easing: 'ease-in-out' }, { translate: `0 ${to}px` }]
+    : [{ translate: `0 ${from}px` }, { translate: `0 ${to}px` }];
+  el.animate(kf, { duration, easing: bounce ? 'linear' : Motion.OUT_5 });
+}
+function foldTargets() { return [...grid.children].filter(el => el.classList.contains('tile')).concat($('#top')); }
+// lays the open folder out under its tile and pushes Start apart around it
+function placeFold(opening = false) {
+  if (!openFolderId || !foldInline()) return;
+  const anchor = startTileEl(foldAnchorId);
+  if (!anchor) return;
+  let a = anchor.getBoundingClientRect();
+  if (opening && (a.left < 0 || a.right > innerWidth)) {
+    scroller.scrollLeft += a.left - parseFloat(getComputedStyle(grid).paddingLeft);
+    a = anchor.getBoundingClientRect();
+  }
+  const sy = shiftY(anchor);
+  const aTop = a.top - sy, aBot = a.bottom - sy;
+  const step = cellStep(), gap = step - (UNIT_PX[settings.tileScale] || 70);
+  const H = innerHeight, margin = 12;
+  folderBand.style.height = '';
+  const natural = folderBand.scrollHeight;
+  const y0 = aBot + gap;
+  // room comes from below first; Start moves up only as much as the folder needs, keeping its tile on screen
+  const up = Math.min(Math.max(0, y0 + natural + margin - H), Math.max(0, aTop - margin));
+  const top = y0 - up;
+  const bandH = Math.min(natural, H - margin - top);
+  folderBand.style.top = top + 'px';
+  folderBand.style.height = bandH + 'px';
+  const down = bandH + gap;
+  const animate = opening ? 'all' : 'known';
+  for (const el of foldTargets()) {
+    if (el === anchor) { foldSlide(el, -up, { animate, duration: FOLD_OPEN, bounce: opening ? step * FOLD_BOUNCE : 0 }); continue; }
+    const below = el.id !== 'top' && el.getBoundingClientRect().bottom - shiftY(el) > aBot + 1;
+    foldSlide(el, (below ? down : 0) - up, { animate, duration: FOLD_OPEN });
+  }
+  if (opening && !Motion.reduced()) {
+    folderBand.animate([{ clipPath: 'inset(0 0 100% 0)' }, { clipPath: 'inset(0 0 0 0)' }], { duration: FOLD_OPEN, easing: Motion.OUT_5 });
+    foldBand.animate([{ opacity: 0 }, { opacity: 1 }], { duration: FOLD_OPEN, easing: Motion.IN_5 });
+  }
+}
 function openFolder(id) {
   hideMenu();
-  openFolderId = id;
   const wasOpen = isOpen(folderOverlay);
+  openFolderId = id;
+  if (wasOpen) { renderFolder({ animate: true }); return; }
+  clearTimeout(foldTimer);
+  clearTimeout(overlayExits.get(folderOverlay));
+  folderOverlay.classList.remove('closing');
+  [folderBand, foldBand].forEach(x => x.getAnimations().forEach(a => a.cancel()));
+  const ids = [...pathTo(id).map(p => p.id), id];
+  foldAnchorId = ids.find(x => startTileEl(x)) || null;
+  folderOverlay.classList.toggle('inline', !!foldAnchorId);
   folderOverlay.hidden = false; // so the folder can measure its width
-  if (!wasOpen) openOverlay(folderOverlay);
-  renderFolder({ animate: true });
+  if (foldAnchorId) {
+    folderOverlay.classList.add('open');
+    renderFolder({ opening: true });
+  } else {
+    folderBand.style.top = folderBand.style.height = '';
+    openOverlay(folderOverlay);
+    renderFolder({ animate: true });
+  }
 }
-function renderFolder({ animate = false } = {}) {
+function renderFolder({ animate = false, opening = false } = {}) {
   const f = findFolder(openFolderId);
   if (!f) { closeFolder(); return; }
   const path = pathTo(f.id);
@@ -1147,11 +1223,35 @@ function renderFolder({ animate = false } = {}) {
   folderGrid.replaceChildren(...els);
   placeInFolder(els, f.children);
   $('#folder-empty').hidden = f.children.length > 0;
-  if (animate && settings.animations) entrance(folderGrid);
+  if (foldInline()) {
+    placeFold(opening);
+    // going into a folder inside this one: its contents fade in where the last ones were (ExpandAlpha)
+    if (animate && !Motion.reduced()) foldBand.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 220, easing: Motion.OUT_5 });
+  } else if (animate && settings.animations) entrance(folderGrid);
 }
 function closeFolder() {
   openFolderId = null;
-  closeOverlay(folderOverlay);
+  if (!foldInline() || folderOverlay.hidden) { closeOverlay(folderOverlay); return; }
+  folderOverlay.classList.add('closing');
+  const anchor = startTileEl(foldAnchorId);
+  const step = cellStep();
+  for (const el of foldTargets()) {
+    if (el._foldY !== undefined) foldSlide(el, 0, { animate: 'known', duration: FOLD_CLOSE, bounce: el === anchor ? step * FOLD_BOUNCE * 0.5 : 0 });
+  }
+  const quick = Motion.reduced();
+  if (!quick) {
+    folderBand.animate([{ clipPath: 'inset(0 0 0 0)' }, { clipPath: 'inset(0 0 100% 0)' }], { duration: FOLD_CLOSE, easing: Motion.OUT_5, fill: 'forwards' });
+    foldBand.animate([{ opacity: 1 }, { opacity: 0 }], { duration: FOLD_CLOSE * 0.6, easing: Motion.OUT_5, fill: 'forwards' });
+  }
+  clearTimeout(foldTimer);
+  foldTimer = setTimeout(() => {
+    folderOverlay.hidden = true;
+    folderOverlay.classList.remove('closing', 'open', 'inline');
+    [folderBand, foldBand].forEach(x => x.getAnimations().forEach(a => a.cancel()));
+    folderBand.style.top = folderBand.style.height = '';
+    for (const el of foldTargets()) { delete el._foldY; el.style.translate = ''; }
+    foldAnchorId = null;
+  }, quick ? 0 : FOLD_CLOSE + 20);
 }
 
 // Esc and the overlay backdrop go up one level; Done closes
