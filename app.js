@@ -2,8 +2,9 @@
 /* Metro Start — a Windows 8–style tile Start screen for Chrome's new tab page. */
 
 // ---------------------------------------------------------------- constants
-const PALETTE = ['#2d89ef', '#2b5797', '#00aba9', '#1e7145', '#00a300', '#99b433', '#e3a21a', '#ffc40d',
-  '#da532c', '#ee1111', '#b91d47', '#ff0097', '#9f00a7', '#7e3878', '#603cba', '#1d1d1d'];
+// The 20 Windows Phone 8 accent colours, in the phone's picker order (metroweb theme.ts), then near-black
+const PALETTE = ['#a4c400', '#60a917', '#008a00', '#00aba9', '#1ba1e2', '#0050ef', '#6a00ff', '#aa00ff', '#f472d0', '#d80073',
+  '#a20025', '#e51400', '#fa6800', '#f0a30a', '#e3c800', '#825a2c', '#6d8764', '#647687', '#76608a', '#87794e', '#1d1d1d'];
 const BACKGROUNDS = ['#1f0068', '#2b0d4f', '#001e4e', '#004050', '#00451f', '#4e0038', '#5a1e00', '#2d2d2d', '#000000'];
 const SIZES = { small: [1, 1], medium: [2, 2], wide: [4, 2], large: [4, 4] };
 const SIZE_NAMES = { small: 'Small', medium: 'Medium', wide: 'Wide', large: 'Large' };
@@ -20,7 +21,7 @@ const DEFAULT_SETTINGS = {
   showTitle: true,
   bg: { color: '#1f0068', image: '', dim: 25, credit: null },
   tileScale: 'normal',
-  font: 'rounded',
+  font: 'metro',
   animations: true,
   flipOpen: false,
   parallax: true,
@@ -148,37 +149,37 @@ function link(title, url, color, size = 'medium') {
 function defaultTiles() {
   return [
     {
-      id: uid(), type: 'folder', title: 'Google', color: '#2d89ef', size: 'wide', children: [
-        link('Google', 'https://www.google.com', '#2d89ef', 'wide'),
-        link('Gmail', 'https://mail.google.com', '#b91d47'),
-        link('Maps', 'https://maps.google.com', '#1e7145', 'small'),
-        link('Drive', 'https://drive.google.com', '#e3a21a', 'small'),
-        link('Calendar', 'https://calendar.google.com', '#2b5797', 'small'),
-        link('Photos', 'https://photos.google.com', '#da532c', 'small'),
+      id: uid(), type: 'folder', title: 'Google', color: '#1ba1e2', size: 'wide', children: [
+        link('Google', 'https://www.google.com', '#1ba1e2', 'wide'),
+        link('Gmail', 'https://mail.google.com', '#a20025'),
+        link('Maps', 'https://maps.google.com', '#008a00', 'small'),
+        link('Drive', 'https://drive.google.com', '#f0a30a', 'small'),
+        link('Calendar', 'https://calendar.google.com', '#0050ef', 'small'),
+        link('Photos', 'https://photos.google.com', '#fa6800', 'small'),
         link('News', 'https://news.google.com', '#00aba9'),
       ],
     },
     {
-      id: uid(), type: 'folder', title: 'Social', color: '#603cba', size: 'medium', children: [
-        link('Reddit', 'https://www.reddit.com', '#da532c'),
-        link('LinkedIn', 'https://www.linkedin.com', '#2b5797'),
-        link('Facebook', 'https://www.facebook.com', '#2d89ef'),
+      id: uid(), type: 'folder', title: 'Social', color: '#6a00ff', size: 'medium', children: [
+        link('Reddit', 'https://www.reddit.com', '#fa6800'),
+        link('LinkedIn', 'https://www.linkedin.com', '#0050ef'),
+        link('Facebook', 'https://www.facebook.com', '#1ba1e2'),
         link('X', 'https://x.com', '#1d1d1d'),
       ],
     },
     link('Wikipedia', 'https://www.wikipedia.org', '#1d1d1d'),
-    link('Amazon', 'https://www.amazon.com', '#e3a21a', 'wide'),
+    link('Amazon', 'https://www.amazon.com', '#f0a30a', 'wide'),
     {
-      id: uid(), type: 'folder', title: 'Entertainment', color: '#b91d47', size: 'wide', children: [
-        link('Netflix', 'https://www.netflix.com', '#b91d47', 'wide'),
-        link('YouTube', 'https://www.youtube.com', '#ee1111'),
-        link('Hulu', 'https://www.hulu.com', '#00a300'),
-        link('Max', 'https://www.max.com', '#603cba'),
-        link('Disney+', 'https://www.disneyplus.com', '#2b5797'),
+      id: uid(), type: 'folder', title: 'Entertainment', color: '#a20025', size: 'wide', children: [
+        link('Netflix', 'https://www.netflix.com', '#a20025', 'wide'),
+        link('YouTube', 'https://www.youtube.com', '#e51400'),
+        link('Hulu', 'https://www.hulu.com', '#60a917'),
+        link('Max', 'https://www.max.com', '#6a00ff'),
+        link('Disney+', 'https://www.disneyplus.com', '#0050ef'),
         link('Prime Video', 'https://www.primevideo.com', '#00aba9'),
         link('Apple TV+', 'https://tv.apple.com', '#1d1d1d'),
-        link('Spotify', 'https://open.spotify.com', '#1e7145'),
-        link('Twitch', 'https://www.twitch.tv', '#9f00a7'),
+        link('Spotify', 'https://open.spotify.com', '#008a00'),
+        link('Twitch', 'https://www.twitch.tv', '#aa00ff'),
       ],
     },
     gamesFolder(),
@@ -218,7 +219,7 @@ function restoreGames() {
   }
 }
 function gamesFolder() {
-  return { id: uid(), type: 'folder', title: 'Games', color: '#00a300', size: 'medium', children: GAME_ORDER.map(g => gameTile(g)) };
+  return { id: uid(), type: 'folder', title: 'Games', color: '#60a917', size: 'medium', children: GAME_ORDER.map(g => gameTile(g)) };
 }
 
 const validPos = p => !!p && [p.g, p.c, p.r].every(n => Number.isInteger(n) && n >= 0) && p.c < 64 && p.g < 500 && p.r < 1000;
@@ -424,13 +425,30 @@ const ctx = $('#ctx');
 const settingsPanel = $('#settings');
 const settingsScrim = $('#settings-scrim');
 
+// Bands slide in 8% of the screen over a fading scrim and leave sliding 3% (metro-launcher's panels)
+const overlayExits = new WeakMap();
+const isOpen = el => !el.hidden && !el.classList.contains('closing');
 function openOverlay(el) {
+  clearTimeout(overlayExits.get(el));
+  el.classList.remove('closing');
   el.hidden = false;
+  const band = el.querySelector('.band');
+  if (band) { band.getAnimations().forEach(a => a.cancel()); Motion.panelIn(band, { distance: 0.08 }); }
   requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('open')));
 }
 function closeOverlay(el) {
   el.classList.remove('open');
-  el.hidden = true;
+  if (el.hidden) return;
+  const band = el.querySelector('.band');
+  if (!band || Motion.reduced()) { el.hidden = true; return; }
+  el.classList.add('closing');
+  Motion.panelOut(band);
+  clearTimeout(overlayExits.get(el));
+  overlayExits.set(el, setTimeout(() => {
+    el.hidden = true;
+    el.classList.remove('closing');
+    band.getAnimations().forEach(a => a.cancel());
+  }, 170));
 }
 
 // ---------------------------------------------------------------- tiles
@@ -653,6 +671,7 @@ function renderGrid({ animate = false } = {}) {
     if (changed) saveTilesSoon();
   }
   grid.replaceChildren(...els);
+  if (openFolderId) placeFold();
   const hint = $('#empty-hint');
   hint.hidden = list.length > 0;
   hint.textContent = q
@@ -661,14 +680,9 @@ function renderGrid({ animate = false } = {}) {
   if (animate && settings.animations) entrance(grid);
 }
 
-function entrance(container) {
-  const left = container.getBoundingClientRect().left;
-  for (const el of container.children) {
-    const dx = el.getBoundingClientRect().left - left;
-    el.style.animationDelay = Math.min(dx * 0.35, 650) + 'ms';
-    el.classList.add('enter');
-    el.addEventListener('animationend', () => { el.classList.remove('enter'); el.style.animationDelay = ''; }, { once: true });
-  }
+// Tiles fly out of the biggest tile in 3D (metro-launcher's Xbox One dashboard entrance)
+function entrance(container, opts) {
+  Motion.flyIn(container, { withHeader: container === grid, ...opts });
 }
 
 function layoutGrid() {
@@ -687,29 +701,40 @@ function layoutGrid() {
 
 
 // ---- flip on open: the tile turns over like a card, shows what's opening, then opens it
+// the tile tips over on its horizontal axis, shows what's opening, then opens it (metro-launcher's flip)
 function flipThen(el, t, done) {
-  if (!settings.flipOpen || !settings.animations || matchMedia('(prefers-reduced-motion: reduce)').matches || el.closest('.preview-stage')) { done(); return; }
+  if (!settings.flipOpen || Motion.reduced() || el.closest('.preview-stage')) { done(); return; }
   if (el.classList.contains('flipping')) return;
   el.style.transform = '';
-  el.classList.add('flipping', 'flip-out');
+  el.classList.add('flipping');
   const back = t.type === 'folder' ? `${t.children.length} item${t.children.length === 1 ? '' : 's'}`
     : t.type === 'game' ? 'Play' : hostOf(t.url) || t.title;
   let finished = false;
   const finish = () => { if (finished) return; finished = true; done(); setTimeout(() => resetFlip(el), 700); };
-  el.addEventListener('animationend', () => {
-    el.classList.remove('flip-out');
+  Motion.flipTile(el, () => {
     el.append(h('div', { class: 'tile-back' }, h('span', { class: 'tile-back-text' }, back)));
-    el.classList.add('flipped', 'flip-in');
-    el.addEventListener('animationend', finish, { once: true });
-  }, { once: true });
-  setTimeout(finish, 900); // in case an animation event never arrives
+    el.classList.add('flipped');
+  }).then(finish);
+  setTimeout(finish, 1200); // in case an animation never settles
 }
 function resetFlip(el) {
-  el.classList.remove('flipping', 'flip-out', 'flip-in', 'flipped');
+  el.classList.remove('flipping', 'flipped');
   el.querySelectorAll('.tile-back').forEach(b => b.remove());
 }
 // coming back with the browser's Back button can restore a half-flipped page
-window.addEventListener('pageshow', () => document.querySelectorAll('.tile.flipping').forEach(resetFlip));
+window.addEventListener('pageshow', e => {
+  document.querySelectorAll('.tile.flipping').forEach(resetFlip);
+  Motion.clearZooms(false);
+  if (e.persisted && settings.animations) entrance(grid);
+});
+// Start recedes while the tile opens up to the whole screen in its colour, then what it opens fades in over it
+// (metro-launcher's launch)
+let launchedTile = null;
+function launchFrom(el, open) {
+  if (el.closest('.preview-stage')) { open(); return; }
+  launchedTile = el;
+  Motion.zoomFrom(el).then(() => { open(); Motion.clearZooms(); });
+}
 
 // ---- shared tile interactions (main grid + folder grid)
 function bindTileEvents(container, getFolderId) {
@@ -719,8 +744,8 @@ function bindTileEvents(container, getFolderId) {
     const f = findTile(el.dataset.id);
     if (!f) return;
     const t = f.tile;
-    if (t.type === 'folder') { e.preventDefault(); flipThen(el, t, () => openFolder(t.id)); return; }
-    if (t.type === 'game') { e.preventDefault(); flipThen(el, t, () => openGame(t.game)); return; }
+    if (t.type === 'folder') { e.preventDefault(); openFolder(t.id); return; }
+    if (t.type === 'game') { e.preventDefault(); flipThen(el, t, () => launchFrom(el, () => openGame(t.game))); return; }
     const newTab = e.ctrlKey || e.metaKey || e.shiftKey;
     if (newTab) {
       // the browser opens ordinary links in a new tab by itself
@@ -728,7 +753,17 @@ function bindTileEvents(container, getFolderId) {
       return;
     }
     e.preventDefault();
-    flipThen(el, t, () => openUrl(t.url, false));
+    // the page keeps showing the launch while the site loads
+    flipThen(el, t, () => {
+      // downloads and blocked navigations leave the page up, so the launch layer clears itself
+      if (!el.closest('.preview-stage')) {
+        Motion.zoomFrom(el).then(() => setTimeout(() => {
+          Motion.clearZooms();
+          if (el.isConnected) entrance(el.parentElement, { anchor: el, keepAnchor: true });
+        }, 1500));
+      }
+      openUrl(t.url, false);
+    });
   });
   container.addEventListener('auxclick', e => {
     const el = e.target.closest('.tile');
@@ -741,25 +776,8 @@ function bindTileEvents(container, getFolderId) {
   });
   container.addEventListener('contextmenu', e => tileMenu(e, getFolderId()));
 
-  // the Windows 8 "press" tilt: the tile leans away from where you press it
-  container.addEventListener('pointerdown', e => {
-    if (e.button !== 0 || !settings.animations) return;
-    const el = e.target.closest('.tile');
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    const x = (e.clientX - r.left) / r.width - 0.5;
-    const y = (e.clientY - r.top) / r.height - 0.5;
-    el.style.transform = `perspective(700px) rotateY(${x * 16}deg) rotateX(${-y * 16}deg) scale(.97)`;
-    const reset = () => {
-      el.style.transform = '';
-      window.removeEventListener('pointerup', reset);
-      window.removeEventListener('pointercancel', reset);
-      el.removeEventListener('dragstart', reset);
-    };
-    window.addEventListener('pointerup', reset);
-    window.addEventListener('pointercancel', reset);
-    el.addEventListener('dragstart', reset);
-  });
+  // the phone's TiltEffect: the tile tips toward the pointer and sinks in
+  Tilt.bind(container, '.tile', () => !Motion.reduced() && !container.closest('.preview-stage'));
 
   // drag and drop: reorder, or drop a link onto the middle of a folder to file it
   container.addEventListener('dragstart', e => {
@@ -1104,14 +1122,93 @@ function tileMenu(e, folderId) {
 }
 
 // ---------------------------------------------------------------- folders
+// Windows Phone 8.1 Update 1 folders open in place on Start (startmenu.dll, FOLDERGRID*.UIX): everything below the
+// folder tile slides down to make room (SmallTileVerticalSlide, Log w150), the folder tile bounces
+// (AnimationsFolderExpandTileBounce: 25 px on a 480 px phone, a quarter of a small tile), and the contents fade in over
+// a 20% black shade (ExpandAlpha, Exp w150; ExpandedFolderShadingAlpha #33000000). Collapsing reverses it (CollapseAlpha,
+// Log w150). The dumps don't have the keyframe times; the durations here are estimated.
+// Without the folder's tile on screen (a search, say) the folder opens as a band in the middle instead.
+const FOLD_OPEN = 330, FOLD_CLOSE = 240, FOLD_BOUNCE = 0.25;
+const foldBand = folderBand.querySelector('.band-inner');
+let foldAnchorId = null;
+let foldTimer = 0;
+const foldInline = () => folderOverlay.classList.contains('inline');
+const startTileEl = id => [...grid.children].find(el => el.classList.contains('tile') && el.dataset.id === id) || null;
+const shiftY = el => { const t = getComputedStyle(el).translate; return t && t !== 'none' ? parseFloat(t.split(' ')[1]) || 0 : 0; };
+// moves a Start tile (or the header) to `to` px up or down; only what was already in the fold animates
+function foldSlide(el, to, { animate, duration, bounce = 0 }) {
+  const from = shiftY(el);
+  const known = animate === 'all' || el._foldY !== undefined;
+  el._foldY = to;
+  el.style.translate = to ? `0 ${to}px` : '';
+  if (!animate || !known || Motion.reduced() || (Math.abs(from - to) < 0.5 && !bounce)) return;
+  const kf = bounce
+    ? [{ translate: `0 ${from}px`, easing: Motion.OUT_5 }, { translate: `0 ${to + bounce}px`, offset: 0.6, easing: 'ease-in-out' }, { translate: `0 ${to}px` }]
+    : [{ translate: `0 ${from}px` }, { translate: `0 ${to}px` }];
+  el.animate(kf, { duration, easing: bounce ? 'linear' : Motion.OUT_5 });
+}
+function foldTargets() { return [...grid.children].filter(el => el.classList.contains('tile')).concat($('#top')); }
+// lays the open folder out under its tile and pushes Start apart around it
+function placeFold(opening = false) {
+  if (!openFolderId || !foldInline()) return;
+  const anchor = startTileEl(foldAnchorId);
+  if (!anchor) return;
+  let a = anchor.getBoundingClientRect();
+  if (opening && (a.left < 0 || a.right > innerWidth)) {
+    scroller.scrollLeft += a.left - parseFloat(getComputedStyle(grid).paddingLeft);
+    a = anchor.getBoundingClientRect();
+  }
+  const sy = shiftY(anchor);
+  const aTop = a.top - sy, aBot = a.bottom - sy;
+  const step = cellStep(), gap = step - (UNIT_PX[settings.tileScale] || 70);
+  const H = innerHeight, margin = 12;
+  folderBand.style.height = '';
+  const natural = folderBand.scrollHeight;
+  const y0 = aBot + gap;
+  // room comes from below first; Start moves up only as much as the folder needs, keeping its tile on screen,
+  // unless that would leave less than 60% of the window (or the whole folder) to show the folder in
+  const need = Math.max(0, y0 + natural + margin - H);
+  const must = Math.max(0, y0 + Math.min(natural, H * 0.6) + margin - H);
+  const up = Math.min(need, Math.max(aTop - margin, must), Math.max(0, y0 - margin));
+  const top = y0 - up;
+  const bandH = Math.min(natural, H - margin - top);
+  folderBand.style.top = top + 'px';
+  folderBand.style.height = bandH + 'px';
+  const down = bandH + gap;
+  const animate = opening ? 'all' : 'known';
+  for (const el of foldTargets()) {
+    if (el === anchor) { foldSlide(el, -up, { animate, duration: FOLD_OPEN, bounce: opening ? step * FOLD_BOUNCE : 0 }); continue; }
+    const below = el.id !== 'top' && el.getBoundingClientRect().bottom - shiftY(el) > aBot + 1;
+    foldSlide(el, (below ? down : 0) - up, { animate, duration: FOLD_OPEN });
+  }
+  if (opening && !Motion.reduced()) {
+    folderBand.animate([{ clipPath: 'inset(0 0 100% 0)' }, { clipPath: 'inset(0 0 0 0)' }], { duration: FOLD_OPEN, easing: Motion.OUT_5 });
+    foldBand.animate([{ opacity: 0 }, { opacity: 1 }], { duration: FOLD_OPEN, easing: Motion.IN_5 });
+  }
+}
 function openFolder(id) {
   hideMenu();
+  const wasOpen = isOpen(folderOverlay);
   openFolderId = id;
+  if (wasOpen) { renderFolder({ animate: true }); return; }
+  clearTimeout(foldTimer);
+  clearTimeout(overlayExits.get(folderOverlay));
+  folderOverlay.classList.remove('closing');
+  [folderBand, foldBand].forEach(x => x.getAnimations().forEach(a => a.cancel()));
+  const ids = [...pathTo(id).map(p => p.id), id];
+  foldAnchorId = ids.find(x => startTileEl(x)) || null;
+  folderOverlay.classList.toggle('inline', !!foldAnchorId);
   folderOverlay.hidden = false; // so the folder can measure its width
-  renderFolder({ animate: true });
-  openOverlay(folderOverlay);
+  if (foldAnchorId) {
+    folderOverlay.classList.add('open');
+    renderFolder({ opening: true });
+  } else {
+    folderBand.style.top = folderBand.style.height = '';
+    openOverlay(folderOverlay);
+    renderFolder({ animate: true });
+  }
 }
-function renderFolder({ animate = false } = {}) {
+function renderFolder({ animate = false, opening = false } = {}) {
   const f = findFolder(openFolderId);
   if (!f) { closeFolder(); return; }
   const path = pathTo(f.id);
@@ -1129,11 +1226,35 @@ function renderFolder({ animate = false } = {}) {
   folderGrid.replaceChildren(...els);
   placeInFolder(els, f.children);
   $('#folder-empty').hidden = f.children.length > 0;
-  if (animate && settings.animations) entrance(folderGrid);
+  if (foldInline()) {
+    placeFold(opening);
+    // going into a folder inside this one: its contents fade in where the last ones were (ExpandAlpha)
+    if (animate && !Motion.reduced()) foldBand.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 220, easing: Motion.OUT_5 });
+  } else if (animate && settings.animations) entrance(folderGrid);
 }
 function closeFolder() {
   openFolderId = null;
-  closeOverlay(folderOverlay);
+  if (!foldInline() || folderOverlay.hidden) { closeOverlay(folderOverlay); return; }
+  folderOverlay.classList.add('closing');
+  const anchor = startTileEl(foldAnchorId);
+  const step = cellStep();
+  for (const el of foldTargets()) {
+    if (el._foldY !== undefined) foldSlide(el, 0, { animate: 'known', duration: FOLD_CLOSE, bounce: el === anchor ? step * FOLD_BOUNCE * 0.5 : 0 });
+  }
+  const quick = Motion.reduced();
+  if (!quick) {
+    folderBand.animate([{ clipPath: 'inset(0 0 0 0)' }, { clipPath: 'inset(0 0 100% 0)' }], { duration: FOLD_CLOSE, easing: Motion.OUT_5, fill: 'forwards' });
+    foldBand.animate([{ opacity: 1 }, { opacity: 0 }], { duration: FOLD_CLOSE * 0.6, easing: Motion.OUT_5, fill: 'forwards' });
+  }
+  clearTimeout(foldTimer);
+  foldTimer = setTimeout(() => {
+    folderOverlay.hidden = true;
+    folderOverlay.classList.remove('closing', 'open', 'inline');
+    [folderBand, foldBand].forEach(x => x.getAnimations().forEach(a => a.cancel()));
+    folderBand.style.top = folderBand.style.height = '';
+    for (const el of foldTargets()) { delete el._foldY; el.style.translate = ''; }
+    foldAnchorId = null;
+  }, quick ? 0 : FOLD_CLOSE + 20);
 }
 
 // Esc and the overlay backdrop go up one level; Done closes
@@ -1447,6 +1568,7 @@ function applySettings() {
   weatherWidget.hidden = !s.showWeather;
   renderWidgets();
   document.body.classList.toggle('no-anim', !s.animations);
+  Motion.setEnabled(s.animations);
   applyFont(s.font);
   layoutGrid();
   updateParallax();
@@ -2172,6 +2294,7 @@ set.stockSymbols.addEventListener('change', () => {
 // Progress and best scores live in one storage entry: { saves: {game: state}, stats: {game: {...}} }
 let gameData = { saves: {}, stats: {} };
 let gameSession = null;
+let gameExit = 0;
 const gameOverlay = $('#game-overlay');
 const gameBanner = $('#game-banner');
 const saveGameData = debounce(() => Store.set('games', gameData).catch(() => toast('Couldn’t save game progress.')), 400);
@@ -2189,7 +2312,11 @@ function openGame(id) {
   $('#game-tools').replaceChildren();
   $('#game-status').replaceChildren();
   gameBanner.hidden = true;
+  clearTimeout(gameExit);
+  gameOverlay.classList.remove('closing');
+  gameOverlay.getAnimations().forEach(a => a.cancel());
   gameOverlay.hidden = false;
+  Motion.panelIn(gameOverlay);
   const keys = [];
   const api = {
     stage,
@@ -2232,8 +2359,18 @@ function closeGame() {
   try { gameSession.instance && gameSession.instance.destroy(); } catch (err) { console.warn(err); }
   gameSession = null;
   flushGameData();
-  gameOverlay.hidden = true;
-  $('#game-stage').replaceChildren();
+  const done = () => { gameOverlay.hidden = true; gameOverlay.classList.remove('closing'); gameOverlay.getAnimations().forEach(a => a.cancel()); $('#game-stage').replaceChildren(); };
+  if (Motion.reduced()) done();
+  else {
+    gameOverlay.classList.add('closing');
+    Motion.panelOut(gameOverlay);
+    gameExit = setTimeout(done, 170);
+  }
+  // like leaving fullscreen TV: Start flies back out around the game's tile, which stays put
+  const from = launchedTile && launchedTile.isConnected ? launchedTile : null;
+  launchedTile = null;
+  // runs even with Animations off: it also brings back tiles a launch left pushed away
+  entrance(from ? from.parentElement : grid, { anchor: from, keepAnchor: true });
 }
 $('#game-back').addEventListener('click', closeGame);
 // after clicking a toolbar button, hand the keyboard back to the game (so Enter or Space doesn't press the button again)
@@ -2285,9 +2422,9 @@ document.addEventListener('keydown', e => {
       return;
     }
     if (!ctx.hidden) hideMenu();
-    else if (!ed.overlay.hidden) closeEditor();
-    else if (!bm.overlay.hidden) closeBookmarkImport();
-    else if (!wp.overlay.hidden) closeGallery();
+    else if (isOpen(ed.overlay)) closeEditor();
+    else if (isOpen(bm.overlay)) closeBookmarkImport();
+    else if (isOpen(wp.overlay)) closeGallery();
     else if (openFolderId) folderBack();
     else if (settingsPanel.classList.contains('open')) closeSettings();
     else if (searchInput.value) clearSearch();
@@ -2297,7 +2434,7 @@ document.addEventListener('keydown', e => {
   if (gameSession) return;
   if (e.ctrlKey || e.metaKey || e.altKey || e.key.length !== 1) return;
   if (e.target.closest && e.target.closest('input, textarea, select, [contenteditable]')) return;
-  if (!ed.overlay.hidden || !bm.overlay.hidden || !wp.overlay.hidden || openFolderId || settingsPanel.classList.contains('open') || !ctx.hidden) return;
+  if (isOpen(ed.overlay) || isOpen(bm.overlay) || isOpen(wp.overlay) || openFolderId || settingsPanel.classList.contains('open') || !ctx.hidden) return;
   if (e.key === ' ') return;
   searchInput.focus();
 });
