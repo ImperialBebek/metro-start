@@ -1165,8 +1165,11 @@ function placeFold(opening = false) {
   folderBand.style.height = '';
   const natural = folderBand.scrollHeight;
   const y0 = aBot + gap;
-  // room comes from below first; Start moves up only as much as the folder needs, keeping its tile on screen
-  const up = Math.min(Math.max(0, y0 + natural + margin - H), Math.max(0, aTop - margin));
+  // room comes from below first; Start moves up only as much as the folder needs, keeping its tile on screen,
+  // unless that would leave less than 60% of the window (or the whole folder) to show the folder in
+  const need = Math.max(0, y0 + natural + margin - H);
+  const must = Math.max(0, y0 + Math.min(natural, H * 0.6) + margin - H);
+  const up = Math.min(need, Math.max(aTop - margin, must), Math.max(0, y0 - margin));
   const top = y0 - up;
   const bandH = Math.min(natural, H - margin - top);
   folderBand.style.top = top + 'px';
